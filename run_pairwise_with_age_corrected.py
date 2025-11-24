@@ -2,7 +2,7 @@
 """
 Run pairwise CellChat WITH age stratification
 - Groups by cell_type + region + age_bin
-- UPDATED: Added FDR correction for multiple testing
+- ADDED: FDR correction for multiple testing across age groups
 """
 import itertools
 import os
@@ -138,8 +138,8 @@ _, res['qval'], _, _ = multipletests(res['magnitude_rank'], method='fdr_bh')
 out_path = os.path.join(output_dir, f"{job_name}_results.csv")
 res.to_csv(out_path, index=False)
 
-# OLD APPROACH (commented out): sig = res[res["magnitude_rank"] < 0.05]
-# NEW APPROACH: Use FDR-corrected q-values
+# OLD (commented out): sig = res[res["magnitude_rank"] < 0.05]
+# NEW: Use FDR-corrected q-values
 sig = res[res["qval"] < 0.05]
 
 print(f"✓ Saved {{out_path}}")
