@@ -45,20 +45,16 @@ if args.exclude_animals:
 if args.output_suffix:
     print(f"  Output suffix: {args.output_suffix}")
 
-# ── LOAD MATRIX ───────────────────────────────────────────────────────────────
-
 if args.matrix_file:
     matrix_file = args.matrix_file
 else:
-    matrix_file = f'/scratch/easmit31/cell_cell/results/lr_matrices/{region}_nothresh_minage{str(min_age).replace(".","p")}_matrix.csv'
+    matrix_file = f'/scratch/easmit31/cell_cell/results/lr_matrices_corrected/{region}_nothresh_minage{str(min_age).replace(".","p")}_matrix.csv'
 print(f"\nLoading matrix: {matrix_file}")
 
 mat = pd.read_csv(matrix_file, index_col=0, low_memory=False)
 age_row = mat.loc['age'].astype(float)
 sex_row = mat.loc['sex']
 mat = mat.drop(index=['age', 'sex'])
-
-# ── EXCLUDE ANIMALS ───────────────────────────────────────────────────────────
 
 if args.exclude_animals:
     exclude = [a.strip() for a in args.exclude_animals.split(',')]
@@ -70,14 +66,10 @@ if args.exclude_animals:
 
 print(f"Matrix: {mat.shape[0]:,} interactions x {mat.shape[1]} animals")
 
-# ── FILTER TO >= MIN_ANIMALS ──────────────────────────────────────────────────
-
 print(f"\nFiltering to interactions in >={min_animals} animals...")
 n_valid = mat.notna().sum(axis=1)
 mat = mat[n_valid >= min_animals]
 print(f"Interactions to model: {len(mat):,}")
-
-# ── RUN REGRESSIONS ───────────────────────────────────────────────────────────
 
 print("\nRunning OLS: lr_means ~ age + sex...")
 results = []
@@ -116,24 +108,18 @@ for i, (interaction, row) in enumerate(mat.iterrows()):
 print(f"\nModeled {len(results):,} interactions")
 results_df = pd.DataFrame(results)
 
-# ── FDR ───────────────────────────────────────────────────────────────────────
-
 _, age_qvals, _, _ = multipletests(results_df['age_pval'], method='fdr_bh')
 _, sex_qvals, _, _ = multipletests(results_df['sex_pval'], method='fdr_bh')
 results_df['age_qval'] = age_qvals
 results_df['sex_qval'] = sex_qvals
 
-# ── SAVE ──────────────────────────────────────────────────────────────────────
-
-output_dir = Path(f'/scratch/easmit31/cell_cell/results/within_region_analysis/regression_{region}')
+output_dir = Path(f'/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_{region}')
 output_dir.mkdir(parents=True, exist_ok=True)
 
 excl_tag = '_' + '_'.join(args.exclude_animals.split(',')) + '_excluded' if args.exclude_animals else ''
 output_file = output_dir / f'whole_{region.lower()}_age_sex_regression{excl_tag}{args.output_suffix}.csv'
 results_df.to_csv(output_file, index=False)
 print(f"\n✓ Saved: {output_file}")
-
-# ── SUMMARY ───────────────────────────────────────────────────────────────────
 
 print(f"\nTotal modeled: {len(results_df):,}")
 print(f"Age  p<0.05: {(results_df['age_pval'] < 0.05).sum():,}  q<0.05: {(results_df['age_qval'] < 0.05).sum():,}")

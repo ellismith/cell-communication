@@ -16,12 +16,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--region', type=str, required=True)
 parser.add_argument('--threshold', type=float, default=2.0)
 parser.add_argument('--min_age', type=float, default=1.0)
-parser.add_argument('--input_dir', type=str, default='/scratch/easmit31/cell_cell/results/per_animal_louvain_v2/')
+parser.add_argument('--input_dir', type=str, default='/scratch/easmit31/cell_cell/results/per_animal_louvain_corrected/')
 parser.add_argument('--output_name', type=str, default=None)
 args = parser.parse_args()
 
 input_dir = args.input_dir
-output_dir = '/scratch/easmit31/cell_cell/results/lr_matrices/'
+output_dir = '/scratch/easmit31/cell_cell/results/lr_matrices_corrected/'
 os.makedirs(output_dir, exist_ok=True)
 
 files = glob.glob(os.path.join(input_dir, f'*_{args.region}_louvain_results.csv'))
@@ -58,7 +58,7 @@ out = pd.concat([age_row.to_frame().T, sex_row.to_frame().T, matrix])
 if args.output_name:
     output_file = os.path.join(output_dir, args.output_name)
 else:
-    output_file = os.path.join(output_dir, f'{args.region}_lr{args.threshold}_minage{args.min_age}_matrix.csv')
+    output_file = os.path.join(output_dir, f'{args.region}_nothresh_minage{str(args.min_age).replace(".","p")}_matrix.csv')
 
 out.to_csv(output_file)
 print(f"\nSaved: {output_file}")

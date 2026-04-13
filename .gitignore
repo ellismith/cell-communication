@@ -1,0 +1,8 @@
+*.h5ad
+*.csv
+results/
+figures/
+*.png
+*.pdf
+archive/
+logs/

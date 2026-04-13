@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-Hypergeometric enrichment AND depletion test for age-associated LR pairs, all 11 regions.
-Directional only: separately tests strengthening (pos beta) and weakening (neg beta).
-FDR correction is applied once globally across all regions, cell types, roles,
-directions, and enrichment/depletion tests combined.
+Hypergeometric enrichment AND depletion of functional LR categories per region,
+separately for strengthening (pos beta) and weakening (neg beta) age effects.
+No cell type stratification — tests whether each functional category is over/under-
+represented among age-significant interactions in each region.
 
-Hypergeometric framing (per region, per direction):
+Hypergeometric framing (per region, per direction, per category):
   N = total tested rows in region
   K = total age-sig rows with pos (or neg) beta
-  n = rows where cell type X is sender (or receiver)
-  k = rows where cell type X is sender AND age-sig AND pos (or neg) beta
+  n = rows in region where LR pair belongs to category Y
+  k = rows in region where LR pair belongs to category Y AND age-sig pos (or neg)
 
   Enrichment p-value = P(X > k)  = hypergeom.sf(k, N, K, n)
   Depletion  p-value = P(X <= k) = hypergeom.cdf(k, N, K, n)
 
+Single global BH-FDR correction across all tests.
+
 Usage:
-  python hypergeometric_enrichment_all_regions.py                  # broad cell types
-  python hypergeometric_enrichment_all_regions.py --louvain        # Louvain cluster level
+  python hypergeometric_category_enrichment.py
 """
 
 import pandas as pd
@@ -25,67 +26,35 @@ from scipy.stats import hypergeom
 from statsmodels.stats.multitest import multipletests
 import os
 import glob
-import argparse
-
-# ── args ───────────────────────────────────────────────────────────────────
-parser = argparse.ArgumentParser()
-parser.add_argument("--louvain", action="store_true",
-                    help="Run at Louvain cluster level (skip broad cell type collapsing)")
-args = parser.parse_args()
 
 # ── paths ──────────────────────────────────────────────────────────────────
-REGRESSION_DIR = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected"
-OUT_DIR        = os.path.join(REGRESSION_DIR, "hypergeometric_all_regions")
+REGRESSION_DIR  = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results"
+ANNOTATIONS     = "/scratch/easmit31/cell_cell/cpdb_lr_annotations.csv"
+OUT_DIR         = os.path.join(REGRESSION_DIR, "hypergeometric_all_regions")
 os.makedirs(OUT_DIR, exist_ok=True)
-
-out_suffix = "_louvain" if args.louvain else ""
 
 Q_THRESH = 0.05
 
 regression_files = sorted(glob.glob(
-    os.path.join(REGRESSION_DIR, "regression_results/regression_*/whole_*_age_sex_regression.csv")
+    os.path.join(REGRESSION_DIR, "regression_*/whole_*_age_sex_regression.csv")
 ))
 print(f"Found {len(regression_files)} region files:")
 for f in regression_files:
     print(f"  {os.path.basename(f)}")
-print(f"\nMode: {'Louvain cluster level' if args.louvain else 'Broad cell type level'}")
+
+# ── load annotations ───────────────────────────────────────────────────────
+ann = pd.read_csv(ANNOTATIONS)
+ann = ann[["lr_pair", "broad_category"]].drop_duplicates()
+categories = sorted(ann["broad_category"].unique())
+print(f"\nLoaded {len(ann)} LR pair annotations across {len(categories)} categories")
 
 # ── hypergeometric test function ───────────────────────────────────────────
 def run_hypergeom(N, K, n, k):
-    expected   = n * K / N if N > 0 else np.nan
-    fold       = k / expected if expected > 0 else np.nan
-    p_enrich   = hypergeom.sf(k, N, K, n)
-    p_deplete  = hypergeom.cdf(k, N, K, n)
+    expected  = n * K / N if N > 0 else np.nan
+    fold      = k / expected if expected > 0 else np.nan
+    p_enrich  = hypergeom.sf(k, N, K, n)
+    p_deplete = hypergeom.cdf(k, N, K, n)
     return k, expected, fold, p_enrich, p_deplete
-
-# ── run tests for one role ─────────────────────────────────────────────────
-def enrichment_by_role(df_all, df_sig_pos, df_sig_neg, N, K_pos, K_neg, role):
-    cell_types = sorted(df_all[role].unique())
-    rows = []
-    for ct in cell_types:
-        n = (df_all[role] == ct).sum()
-
-        k_pos, exp_pos, fe_pos, p_pos_enrich, p_pos_deplete = run_hypergeom(
-            N, K_pos, n, (df_sig_pos[role] == ct).sum())
-        k_neg, exp_neg, fe_neg, p_neg_enrich, p_neg_deplete = run_hypergeom(
-            N, K_neg, n, (df_sig_neg[role] == ct).sum())
-
-        rows.append({
-            "cell_type":            ct,
-            "role":                 role,
-            "n_tested":             n,
-            "k_pos":                k_pos,
-            "expected_pos":         round(exp_pos, 2),
-            "fold_enrichment_pos":  round(fe_pos, 3),
-            "p_pos_enrich":         p_pos_enrich,
-            "p_pos_deplete":        p_pos_deplete,
-            "k_neg":                k_neg,
-            "expected_neg":         round(exp_neg, 2),
-            "fold_enrichment_neg":  round(fe_neg, 3),
-            "p_neg_enrich":         p_neg_enrich,
-            "p_neg_deplete":        p_neg_deplete,
-        })
-    return pd.DataFrame(rows)
 
 # ── main loop ──────────────────────────────────────────────────────────────
 all_results = []
@@ -101,11 +70,15 @@ for fpath in regression_files:
     df = pd.read_csv(fpath)
     print(f"  Loaded {len(df):,} rows")
 
+    # parse ligand and receptor, build lr_pair key
     df[["sender", "receiver", "ligand", "receptor"]] = df["interaction"].str.split("|", expand=True)
+    df["lr_pair"] = df["ligand"] + "|" + df["receptor"]
 
-    if not args.louvain:
-        df["sender"]   = df["sender"].str.replace(r"_\d+$", "", regex=True)
-        df["receiver"] = df["receiver"].str.replace(r"_\d+$", "", regex=True)
+    # merge annotations
+    df = df.merge(ann, on="lr_pair", how="left")
+    n_unmapped = df["broad_category"].isna().sum()
+    if n_unmapped > 0:
+        print(f"  WARNING: {n_unmapped:,} rows could not be mapped to a category")
 
     df_sig     = df[df["age_qval"] < Q_THRESH]
     df_sig_pos = df_sig[df_sig["age_coef"] > 0]
@@ -121,13 +94,36 @@ for fpath in regression_files:
         print(f"  WARNING: no age-significant interactions in {region}, skipping.")
         continue
 
-    results = []
-    for role in ["sender", "receiver"]:
-        res = enrichment_by_role(df, df_sig_pos, df_sig_neg, N, K_pos, K_neg, role)
-        results.append(res)
-    results = pd.concat(results, ignore_index=True)
-    results.insert(0, "region", region)
-    all_results.append(results)
+    rows = []
+    for cat in categories:
+        cat_mask     = df["broad_category"] == cat
+        cat_pos_mask = df_sig_pos["broad_category"] == cat
+        cat_neg_mask = df_sig_neg["broad_category"] == cat
+
+        n_cat = cat_mask.sum()
+        k_pos = cat_pos_mask.sum()
+        k_neg = cat_neg_mask.sum()
+
+        k_pos_val, exp_pos, fe_pos, p_pos_enrich, p_pos_deplete = run_hypergeom(N, K_pos, n_cat, k_pos)
+        k_neg_val, exp_neg, fe_neg, p_neg_enrich, p_neg_deplete = run_hypergeom(N, K_neg, n_cat, k_neg)
+
+        rows.append({
+            "region":               region,
+            "category":             cat,
+            "n_category":           n_cat,
+            "k_pos":                k_pos_val,
+            "expected_pos":         round(exp_pos, 2),
+            "fold_enrichment_pos":  round(fe_pos, 3),
+            "p_pos_enrich":         p_pos_enrich,
+            "p_pos_deplete":        p_pos_deplete,
+            "k_neg":                k_neg_val,
+            "expected_neg":         round(exp_neg, 2),
+            "fold_enrichment_neg":  round(fe_neg, 3),
+            "p_neg_enrich":         p_neg_enrich,
+            "p_neg_deplete":        p_neg_deplete,
+        })
+
+    all_results.append(pd.DataFrame(rows))
 
 # ── combine and apply single global FDR correction ────────────────────────
 combined = pd.concat(all_results, ignore_index=True)
@@ -149,9 +145,9 @@ combined["q_neg_enrich"]  = all_qvals[2*n:3*n]
 combined["q_neg_deplete"] = all_qvals[3*n:4*n]
 
 # ── save ───────────────────────────────────────────────────────────────────
-out_path = os.path.join(OUT_DIR, f"hypergeometric_enrichment_all_regions{out_suffix}.csv")
+out_path = os.path.join(OUT_DIR, "hypergeometric_category_enrichment_all_regions.csv")
 combined.to_csv(out_path, index=False)
-print(f"\nSaved combined results: {out_path}")
+print(f"\nSaved: {out_path}")
 print(f"Total rows: {len(combined)}")
 
 # ── print summary ──────────────────────────────────────────────────────────
@@ -164,9 +160,9 @@ for label, qcol, kcol, ecol, fecol in [
     ("weakening — enriched",      "q_neg_enrich",  "k_neg", "expected_neg", "fold_enrichment_neg"),
     ("weakening — depleted",      "q_neg_deplete", "k_neg", "expected_neg", "fold_enrichment_neg"),
 ]:
-    sig = combined[combined[qcol] < Q_THRESH].sort_values(["role", "cell_type", "region"])
+    sig = combined[combined[qcol] < Q_THRESH].sort_values(["category", "region"])
     print(f"\n  {label.upper()}:")
     if len(sig):
-        print(sig[["region", "role", "cell_type", kcol, ecol, fecol, qcol]].to_string(index=False))
+        print(sig[["region", "category", "n_category", kcol, ecol, fecol, qcol]].to_string(index=False))
     else:
         print("    none")
