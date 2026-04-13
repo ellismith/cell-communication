@@ -13,8 +13,8 @@ Age-related changes in ligand-receptor signaling across 11 brain regions in non-
 Per-animal snRNA-seq (h5ad)
         ↓
 Step 1: Per-animal LIANA/CellPhoneDB v5 CCC
-        run_per_animal_louvain_v2.py
-        → results/per_animal_louvain_v2/
+        run_per_animal_louvain_ccc.py
+        → results/per_animal_louvain_ccc/
         ↓
 Step 2: Build LR means matrix per region
         build_lr_matrix.py
@@ -43,7 +43,7 @@ Step 5: Visualization
 ### CCC Pipeline
 | Script | Description |
 |--------|-------------|
-| `run_per_animal_louvain_v2.py` | Per-animal LIANA CCC using CellPhoneDB v5. Runs on HPC via SLURM. Validates 2,716 LR pairs at startup. Parameters: `expr_prop=0.05`, FDR on `cellphone_pvals` |
+| `run_per_animal_louvain_ccc.py` | Per-animal LIANA CCC using CellPhoneDB v5. Runs on HPC via SLURM. Validates 2,716 LR pairs at startup. Parameters: `expr_prop=0.05`, FDR on `cellphone_pvals` |
 | `build_lr_matrix.py` | Builds lr_means matrix from per-animal CSV files. Args: `--region`, `--threshold`, `--min_age`, `--input_dir`, `--output_name` |
 | `run_age_sex_regression.py` | OLS regression (`lr_means ~ age + sex`) per interaction. Args: `--region`, `--min_animals` (default 10), `--min_age`, `--exclude_animals`, `--matrix_file`, `--output_suffix` |
 
@@ -51,14 +51,13 @@ Step 5: Visualization
 | Script | Description |
 |--------|-------------|
 | `hypergeometric_enrichment_all_regions.py` | Hypergeometric enrichment and depletion tests for age-associated LR pairs by cell type × role (sender/receiver) × direction (strengthening/weakening) across all 11 regions. Single global BH-FDR correction. |
-| `hypergeometric_category_enrichment.py` | Hypergeometric enrichment and depletion tests for age-associated LR pairs by functional category × direction across all 11 regions. Single global BH-FDR correction across all tests. Uses `cpdb_lr_annotations_corrected_v2.csv`. |
+| `hypergeometric_category_enrichment.py` | Hypergeometric enrichment and depletion tests for age-associated LR pairs by functional category × direction across all 11 regions. Single global BH-FDR correction across all tests. Uses `cpdb_lr_annotations.csv`. |
 
 ### Annotations
 | File/Script | Description |
 |--------|-------------|
 | `build_cpdb_annotations.py` | Builds initial `cpdb_lr_annotations.csv` — 2,716 LR pairs with 19 broad functional categories |
-| `cpdb_lr_annotations_corrected.csv` | First corrected annotation file |
-| `cpdb_lr_annotations_corrected_v2.csv` | Current annotation file with manual category corrections (see Annotation Changes below) |
+| `cpdb_lr_annotations.csv` | LR pair annotations: `lr_pair`, `classification`, `broad_category`. Manually curated with category corrections (see Annotation Changes below) |
 
 ### Visualization
 | Script | Description |
@@ -71,7 +70,7 @@ Step 5: Visualization
 ## Output Structure
 ```
 results/
-├── per_animal_louvain_v2/                  # Per-animal LIANA outputs
+├── per_animal_louvain_ccc/                  # Per-animal LIANA outputs
 ├── per_animal_louvain_dlpfc_attempt2/      # dlPFC rerun
 ├── lr_matrices/                            # LR means matrices per region
 ├── within_region_analysis_corrected/       # Regression + enrichment outputs (corrected pipeline)
@@ -82,7 +81,7 @@ results/
 │   └── regression_results/
 │       └── hypergeometric_all_regions/     # Functional category enrichment
 │           ├── hypergeometric_category_enrichment_all_regions.csv
-│           └── hypergeometric_category_enrichment_all_regions_v2.csv
+│           └── hypergeometric_category_enrichment_all_regions.csv
 └── regression_plots/                       # Regression-based visualizations
     └── per_region/
 ```
@@ -106,16 +105,16 @@ results/
 - `p_pos_enrich`, `p_pos_deplete`, `p_neg_enrich`, `p_neg_deplete`
 - `q_pos_enrich`, `q_pos_deplete`, `q_neg_enrich`, `q_neg_deplete`
 
-`hypergeometric_category_enrichment_all_regions_v2.csv` columns:
+`hypergeometric_category_enrichment_all_regions.csv` columns:
 - `region`, `category`, `n_category`
 - `k_pos`, `expected_pos`, `fold_enrichment_pos`
 - `k_neg`, `expected_neg`, `fold_enrichment_neg`
 - `p_pos_enrich`, `p_pos_deplete`, `p_neg_enrich`, `p_neg_deplete`
 - `q_pos_enrich`, `q_pos_deplete`, `q_neg_enrich`, `q_neg_deplete`
 
-## Annotation Changes (v1 → v2)
+## Annotation Changes
 
-Manual corrections to `cpdb_lr_annotations_corrected_v2.csv` based on biological function:
+Manual corrections to `cpdb_lr_annotations.csv` based on biological function:
 
 | LR pair(s) | From | To | Rationale |
 |---|---|---|---|
