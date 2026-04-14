@@ -31,7 +31,7 @@ args = parser.parse_args()
 
 REGIONS      = ["ACC","CN","dlPFC","EC","HIP","IPP","lCb","M1","MB","mdTN","NAc"]
 GRID_REGIONS = ["ACC","CN","dlPFC","EC","HIP","IPP","lCb","M1","MB","mdTN","NAc"]
-BASE_DIR     = Path("/scratch/easmit31/cell_cell/results/within_region_analysis_corrected")
+BASE_DIR     = Path("/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results")
 ANN_FILE     = Path("/scratch/easmit31/cell_cell/cpdb_lr_annotations.csv")
 OUT_DIR      = BASE_DIR / "chord_plots_synaptic_adhesion"
 OUT_DIR.mkdir(exist_ok=True)

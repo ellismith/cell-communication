@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 Build LR functional annotations from CellPhoneDB classification column.
-Maps our liana-format LR pairs to CellPhoneDB classifications via ligand matching.
-Unmatched ligands are annotated manually with _Claude suffix.
+
+Three-source lookup:
+  1. cpdb_uniprot  — partner_a is a uniprot ID, mapped via gene_input.csv
+  2. cpdb_special  — partner_a is a special identifier (e.g. GABA_byGAD1_and_SLC32A1),
+                     classification pulled directly from CellPhoneDB
+  3. manual        — 113 ligands genuinely absent from CellPhoneDB, annotated manually
+                     (classification has _manual suffix)
+
+Output columns: ligand, receptor, lr_pair, classification, broad_category, source
 
 Usage:
     python build_cpdb_annotations.py
@@ -13,208 +20,253 @@ from pathlib import Path
 
 # ── LOAD ──────────────────────────────────────────────────────────────────────
 
-cpdb = pd.read_csv('/scratch/easmit31/cell_cell/CellPhoneDB_latest/interaction_input_CellPhoneDB.csv')
-gene_input = pd.read_csv('/scratch/easmit31/cell_cell/CellPhoneDB-data/data/gene_input.csv')
-liana = pd.read_csv('/scratch/easmit31/cell_cell/cellphonedb_interactions_liana_format.csv')
+cpdb       = pd.read_csv('/scratch/easmit31/cell_cell/CellPhoneDB-data/interaction_input_CellPhoneDB.csv')
+cpdb['classification'] = cpdb['classification'].str.strip()
+gene_input = pd.read_csv('/scratch/easmit31/cell_cell/CellPhoneDB-data/gene_input.csv')
+liana      = pd.read_csv('/scratch/easmit31/cell_cell/CellPhoneDB-data/cellphonedb_interactions_liana_format.csv')
 
-# ── MAP PARTNER ACCESSIONS TO GENE SYMBOLS ────────────────────────────────────
+# ── SOURCE 1: uniprot lookup ───────────────────────────────────────────────────
 
 prot2gene = dict(zip(gene_input['uniprot'], gene_input['gene_name']))
 cpdb['gene_a'] = cpdb['partner_a'].map(prot2gene)
 
-ligand_class = (cpdb.dropna(subset=['gene_a', 'classification'])
-                .groupby('gene_a')['classification']
-                .agg(lambda x: x.mode()[0]))
-
-liana['lr_pair'] = liana['ligand'] + '|' + liana['receptor']
-liana['classification'] = liana['ligand'].map(ligand_class)
-
-print(f"Total liana pairs: {len(liana)}")
-print(f"Matched by ligand: {liana['classification'].notna().sum()}")
-print(f"Unmatched: {liana['classification'].isna().sum()}")
-
-# ── MANUAL ANNOTATIONS FOR UNMATCHED LIGANDS (_Claude suffix) ─────────────────
-
-MANUAL_LIGAND_CLASS = {
-    'GLS': 'Signaling by Glutamate_Claude', 'GLS2': 'Signaling by Glutamate_Claude',
-    'SLC1A1': 'Signaling by Glutamate_Claude', 'SLC1A2': 'Signaling by Glutamate_Claude',
-    'SLC1A3': 'Signaling by Glutamate_Claude', 'SLC1A6': 'Signaling by Glutamate_Claude',
-    'SLC1A7': 'Signaling by Glutamate_Claude', 'SLC17A6': 'Signaling by Glutamate_Claude',
-    'SLC17A7': 'Signaling by Glutamate_Claude', 'SLC17A8': 'Signaling by Glutamate_Claude',
-    'SHMT1': 'Signaling by Glutamate_Claude', 'SHMT2': 'Signaling by Glutamate_Claude',
-    'GAD1': 'Signaling by GABA_Claude', 'GAD2': 'Signaling by GABA_Claude',
-    'SLC6A1': 'Signaling by GABA_Claude', 'SLC6A11': 'Signaling by GABA_Claude',
-    'SLC6A12': 'Signaling by GABA_Claude', 'SLC6A13': 'Signaling by GABA_Claude',
-    'SLC32A1': 'Signaling by GABA_Claude',
-    'DDC': 'Signaling by Serotonin/Dopamine_Claude', 'DBH': 'Signaling by Serotonin/Dopamine_Claude',
-    'PNMT': 'Signaling by Serotonin/Dopamine_Claude', 'SLC6A2': 'Signaling by Serotonin/Dopamine_Claude',
-    'SLC6A3': 'Signaling by Serotonin/Dopamine_Claude', 'SLC18A1': 'Signaling by Serotonin/Dopamine_Claude',
-    'SLC18A2': 'Signaling by Serotonin/Dopamine_Claude', 'SLC6A6': 'Signaling by Serotonin/Dopamine_Claude',
-    'SLC6A8': 'Signaling by Serotonin/Dopamine_Claude', 'SLC10A4': 'Signaling by Serotonin/Dopamine_Claude',
-    'TPH1': 'Signaling by Serotonin_Claude', 'TPH2': 'Signaling by Serotonin_Claude',
-    'SLC6A4': 'Signaling by Serotonin_Claude', 'ASMT': 'Signaling by Serotonin_Claude',
-    'HDC': 'Signaling by Histamine_Claude',
-    'CHAT': 'Signaling by Acetylcholine_Claude', 'SLC18A3': 'Signaling by Acetylcholine_Claude',
-    'SLC5A7': 'Signaling by Acetylcholine_Claude',
-    'SLC6A5': 'Signaling by Glycine_Claude', 'SLC6A9': 'Signaling by Glycine_Claude',
-    'SLC29A1': 'Signaling by Adenosine_Claude', 'SLC29A2': 'Signaling by Adenosine_Claude',
-    'SLC29A3': 'Signaling by Adenosine_Claude', 'SLC29A4': 'Signaling by Adenosine_Claude',
-    'NT5E': 'Signaling by Adenosine_Claude',
-    'CYP11A1': 'Signaling by Steroids_Claude', 'CYP11B1': 'Signaling by Steroids_Claude',
-    'CYP11B2': 'Signaling by Steroids_Claude', 'CYP17A1': 'Signaling by Steroids_Claude',
-    'CYP19A1': 'Signaling by Steroids_Claude', 'CYP21A2': 'Signaling by Steroids_Claude',
-    'CYP27B1': 'Signaling by Steroids_Claude', 'CYP3A4': 'Signaling by Steroids_Claude',
-    'HSD17B1': 'Signaling by Steroids_Claude', 'HSD17B12': 'Signaling by Steroids_Claude',
-    'HSD17B3': 'Signaling by Steroids_Claude', 'HSD17B6': 'Signaling by Steroids_Claude',
-    'HSD3B1': 'Signaling by Steroids_Claude', 'SRD5A1': 'Signaling by Steroids_Claude',
-    'SRD5A2': 'Signaling by Steroids_Claude', 'SRD5A3': 'Signaling by Steroids_Claude',
-    'SULT1A1': 'Signaling by Steroids_Claude', 'SULT1E1': 'Signaling by Steroids_Claude',
-    'SULT2A1': 'Signaling by Steroids_Claude', 'AKR1B1': 'Signaling by Steroids_Claude',
-    'AKR1C3': 'Signaling by Steroids_Claude', 'AKR1D1': 'Signaling by Steroids_Claude',
-    'DHRS9': 'Signaling by Steroids_Claude', 'FDX1': 'Signaling by Steroids_Claude',
-    'FDX2': 'Signaling by Steroids_Claude', 'FDXR': 'Signaling by Steroids_Claude',
-    'TG': 'Signaling by Steroids_Claude', 'TPO': 'Signaling by Steroids_Claude',
-    'TYR': 'Signaling by Steroids_Claude',
-    'DHCR24': 'Signaling by Cholesterol_Claude', 'DHCR7': 'Signaling by Cholesterol_Claude',
-    'ALDH1A1': 'Signaling by Retinoic Acid_Claude', 'ALDH1A2': 'Signaling by Retinoic Acid_Claude',
-    'ALDH1A3': 'Signaling by Retinoic Acid_Claude', 'DIO3': 'Signaling by Retinoic Acid_Claude',
-    'RBP4': 'Signaling by Retinoic Acid_Claude',
-    'ALOX12': 'Signaling by Lipoxin/Leukotriene_Claude', 'ALOX5': 'Signaling by Lipoxin/Leukotriene_Claude',
-    'ALOX5AP': 'Signaling by Lipoxin/Leukotriene_Claude', 'LTA4H': 'Signaling by Lipoxin/Leukotriene_Claude',
-    'LTC4S': 'Signaling by Lipoxin/Leukotriene_Claude', 'DPEP1': 'Signaling by Lipoxin/Leukotriene_Claude',
-    'DPEP2': 'Signaling by Lipoxin/Leukotriene_Claude', 'DPEP3': 'Signaling by Lipoxin/Leukotriene_Claude',
-    'GGT1': 'Signaling by Lipoxin/Leukotriene_Claude', 'GGT5': 'Signaling by Lipoxin/Leukotriene_Claude',
-    'PTGDS': 'Signaling by Prostaglandin_Claude', 'PTGES': 'Signaling by Prostaglandin_Claude',
-    'PTGES2': 'Signaling by Prostaglandin_Claude', 'PTGES3': 'Signaling by Prostaglandin_Claude',
-    'PTGIS': 'Signaling by Prostaglandin_Claude', 'PTGR1': 'Signaling by Prostaglandin_Claude',
-    'TBXAS1': 'Signaling by Thromboxane_Claude', 'CBR1': 'Signaling by Prostaglandin_Claude',
-    'HEBP1': 'Signaling by Prostaglandin_Claude',
-    'DAGLA': 'Signaling by Arachidonoylglycerol_Claude', 'DAGLB': 'Signaling by Arachidonoylglycerol_Claude',
-    'GDNF': 'Signaling by Neurotrophin_Claude', 'NELL2': 'Signaling by Neurotrophin_Claude',
-    'CBLN1': 'Signaling by Neurotrophin_Claude', 'NXNL1': 'Signaling by Neurotrophin_Claude',
-    'TULP1': 'Signaling by Neurotrophin_Claude', 'GAS6': 'Signaling by Neurotrophin_Claude',
-    'DAG1': 'Signaling by Neurexin_Claude', 'UNC5A': 'Signaling by Netrin_Claude',
-    'LRFN4': 'Signaling by Leucine Rich Repeat And Fibronectin_Claude',
-    'LRFN5': 'Signaling by Leucine Rich Repeat And Fibronectin_Claude',
-    'LRRC4B': 'Signaling by Leucine-Rich Repeat Transmembrane Neuronal Protein_Claude',
-    'LRRC4C': 'Signaling by Leucine-Rich Repeat Transmembrane Neuronal Protein_Claude',
-    'NECTIN3': 'Signaling by Nectin_Claude',
-    'ADCYAP1': 'Signaling by Pituitary adenylate_Claude',
-    'ADM': 'Signaling by Adrenomedullin_Claude', 'ADM2': 'Signaling by Adrenomedullin_Claude',
-    'APELA': 'Signaling by Apelin_Claude', 'APLN': 'Signaling by Apelin_Claude',
-    'CALCA': 'Signaling by Calcitonin_Claude', 'CALCB': 'Signaling by Calcitonin_Claude',
-    'CCK': 'Signaling by Cholecystokinin_Claude',
-    'CRH': 'Signaling by Corticotropin-releasing factor_Claude',
-    'GAST': 'Signaling by Gastrin_Claude', 'GIP': 'Signaling by Neuropeptide precursor_Claude',
-    'GNRH1': 'Signaling by Progonadoliberin_Claude', 'GNRH2': 'Signaling by Progonadoliberin_Claude',
-    'GRP': 'Signaling by Neuropeptide precursor_Claude',
-    'IAPP': 'Signaling by Amylin_Claude', 'INS': 'Signaling by Insulin-like precursor_Claude',
-    'INSL3': 'Signaling by Relaxin_Claude', 'INSL5': 'Signaling by Relaxin_Claude',
-    'PMCH': 'Signaling by Pro-MHC_Claude', 'PRLH': 'Signaling by Prolactin_Claude',
-    'PROK1': 'Signaling by Prokineticin_Claude', 'PROK2': 'Signaling by Prokineticin_Claude',
-    'SCT': 'Signaling by Secretin_Claude', 'SPX': 'Signaling by Spexin precursor_Claude',
-    'TAFA1': 'Signaling by TAFA_Claude', 'TAFA4': 'Signaling by TAFA_Claude',
-    'TAFA5': 'Signaling by TAFA_Claude',
-    'LAMA2': 'Adhesion by Laminin_Claude', 'FBN1': 'Adhesion by Fibronectin_Claude',
-    'FGA': 'Adhesion by Fibribogen_Claude', 'FGB': 'Adhesion by Fibribogen_Claude',
-    'FGG': 'Adhesion by Fibribogen_Claude', 'CSPG4': 'Adhesion by Collagen/Integrin_Claude',
-    'OMD': 'Adhesion by Collagen/Integrin_Claude', 'ITGAV': 'Adhesion by Collagen/Integrin_Claude',
-    'ITGB1': 'Adhesion by Collagen/Integrin_Claude', 'ITGB3': 'Adhesion by Collagen/Integrin_Claude',
-    'ITGB5': 'Adhesion by Collagen/Integrin_Claude', 'LRPAP1': 'Adhesion by Collagen/Integrin_Claude',
-    'TGM2': 'Adhesion by Fibronectin_Claude', 'ALCAM': 'Adhesion by CADM_Claude',
-    'CHL1': 'Adhesion by L1CAM_Claude', 'MADCAM1': 'Adhesion by VCAM_Claude',
-    'ESAM': 'Adhesion by JAM_Claude', 'PECAM1': 'Adhesion by ICAM_Claude',
-    'THBS2': 'Adhesion by Thrombospondin_Claude',
-    'CD274': 'Signaling by Tumor necrosis factor_Claude',
-    'CD276': 'Signaling by Tumor necrosis factor_Claude',
-    'PDCD1LG2': 'Signaling by Tumor necrosis factor_Claude',
-    'CD70': 'Signaling by Tumor necrosis factor_Claude',
-    'CD80': 'Signaling by Interleukin_Claude', 'CD86': 'Signaling by Interleukin_Claude',
-    'CD40LG': 'Signaling by Interleukin_Claude', 'ICOSLG': 'Signaling by Interleukin_Claude',
-    'IL12A': 'Signaling by Interleukin_Claude', 'IL12B': 'Signaling by Interleukin_Claude',
-    'IL17A': 'Signaling by Interleukin_Claude', 'IL23A': 'Signaling by Interleukin_Claude',
-    'IL27': 'Signaling by Interleukin_Claude', 'EBI3': 'Signaling by Interleukin_Claude',
-    'CLCF1': 'Signaling by Interleukin_Claude', 'CNTF': 'Signaling by Interleukin_Claude',
-    'LIF': 'Signaling by Interleukin_Claude', 'EPO': 'Signaling by Interleukin_Claude',
-    'TSLP': 'Signaling by Interleukin_Claude', 'FLT3LG': 'Signaling by Interleukin_Claude',
-    'THPO': 'Signaling by Interleukin_Claude', 'KITLG': 'Signaling by Interleukin_Claude',
-    'LEP': 'Signaling by Interleukin_Claude', 'ADIPOQ': 'Signaling by Interleukin_Claude',
-    'MST1': 'Signaling by Interleukin_Claude', 'TYROBP': 'Signaling by Interleukin_Claude',
-    'PRXL2B': 'Signaling by Interleukin_Claude', 'BST2': 'Signaling by Interleukin_Claude',
-    'CRLF2': 'Signaling by Interleukin_Claude', 'OSM': 'Signaling by Oncostatin-M precursor_Claude',
-    'PRL': 'Signaling by Prolactin_Claude',
-    'XCL1': 'Signaling by Chemokines_Claude', 'XCL2': 'Signaling by Chemokines_Claude',
-    'CLEC2A': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'CLEC2B': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'CD93': 'Signaling by Complement_Claude', 'SFTPD': 'Signaling by Complement_Claude',
-    'LAIR1': 'Signaling by FC receptor_Claude', 'PTPRC': 'Signaling by FC receptor_Claude',
-    'LCK': 'Signaling by FC receptor_Claude', 'UBASH3B': 'Signaling by FC receptor_Claude',
-    'KLRB1': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'CD96': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'MICA': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'MICB': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'NCR3LG1': 'Signaling by Killer Cell Lectin Like Receptor K1_Claude',
-    'PVR': 'Signaling by Poliovirus receptor_Claude',
-    'SIGLEC15': 'Signaling by Chemokines_Claude', 'CRTAM': 'Signaling by Chemokines_Claude',
-    'CD44': 'Signaling by Chemokines_Claude', 'CD47': 'Signaling by Chemokines_Claude',
-    'CD48': 'Signaling by Chemokines_Claude', 'CD52': 'Signaling by Chemokines_Claude',
-    'CD55': 'Signaling by Chemokines_Claude', 'CD58': 'Signaling by Chemokines_Claude',
-    'CD99': 'Signaling by Chemokines_Claude', 'CD200': 'Signaling by Chemokines_Claude',
-    'CD226': 'Signaling by Chemokines_Claude', 'CD24': 'Signaling by Chemokines_Claude',
-    'CD248': 'Signaling by Chemokines_Claude', 'CD34': 'Signaling by Chemokines_Claude',
-    'SPN': 'Signaling by Chemokines_Claude', 'MPZL1': 'Signaling by Chemokines_Claude',
-    'PPIA': 'Signaling by Chemokines_Claude', 'C10orf99': 'Signaling by Chemokines_Claude',
-    'CD177': 'Signaling by Chemokines_Claude', 'RNASET2': 'Signaling by Chemokines_Claude',
-    'PF4': 'Signaling by Chemokines_Claude',
-    'B2M': 'Signaling by HLA_Claude', 'BAG6': 'Signaling by HLA_Claude',
-    'CD1B': 'Signaling by HLA_Claude', 'CD1D': 'Signaling by HLA_Claude',
-    'ERVH48-1': 'Signaling by HLA_Claude',
-    'CD320': 'Signaling by Transferrin_Claude', 'ALB': 'Signaling by Transferrin_Claude',
-    'LCN2': 'Signaling by Transferrin_Claude', 'FTH1': 'Signaling by Transferrin_Claude',
-    'FTL': 'Signaling by Transferrin_Claude', 'HFE': 'Signaling by Transferrin_Claude',
-    'CGA': 'Signaling by Choriogonadotropin_Claude', 'CGB1': 'Signaling by Choriogonadotropin_Claude',
-    'CGB2': 'Signaling by Choriogonadotropin_Claude', 'CGB3': 'Signaling by Choriogonadotropin_Claude',
-    'CGB7': 'Signaling by Choriogonadotropin_Claude', 'FSHB': 'Signaling by Choriogonadotropin_Claude',
-    'LHB': 'Signaling by Choriogonadotropin_Claude', 'TSHB': 'Signaling by Choriogonadotropin_Claude',
-    'GPHA2': 'Signaling by Choriogonadotropin_Claude', 'GPHB5': 'Signaling by Choriogonadotropin_Claude',
-    'AMH': 'Signaling by Muellerian-inhibiting factor_Claude',
-    'LEFTY1': 'Signaling by Left-right determination factor_Claude',
-    'LEFTY2': 'Signaling by Left-right determination factor_Claude',
-    'SOSTDC1': 'Signaling by Sclerostin domain-containing protein_Claude',
-    'TRH': 'Signaling by Neuropeptide precursor_Claude', 'MLN': 'Signaling by Neuropeptide precursor_Claude',
-    'QRFP': 'Signaling by Neuropeptide precursor_Claude', 'KISS1': 'Signaling by Neuropeptide precursor_Claude',
-    'NSMF': 'Signaling by Neuropeptide precursor_Claude', 'REN': 'Signaling by Angiotensinogen_Claude',
-    'KNG1': 'Signaling by Kininogen_Claude',
-    'HGF': 'Signaling by Fibroblast growth factor_Claude',
-    'NDP': 'Signaling by Vascular endothelial growth factor_Claude',
-    'PGF': 'Signaling by Placenta growth factor_Claude',
-    'FGFR4': 'Signaling by Fibroblast growth factor_Claude',
-    'PI16': 'Signaling by Fibroblast growth factor_Claude',
-    'BMPR1B': 'Signaling by BMP_Claude', 'BMPR2': 'Signaling by BMP_Claude',
-    'INHBA': 'Signaling by Inhibin/Activin_Claude', 'INHBB': 'Signaling by Inhibin/Activin_Claude',
-    'LIPA': 'Signaling by Apolipoprotein_Claude', 'CEL': 'Signaling by Apolipoprotein_Claude',
-    'CLU': 'Signaling by Apolipoprotein_Claude', 'SAA1': 'Signaling by Apolipoprotein_Claude',
-    'PRNP': 'Signaling by Amyloid-beta precursor protein_Claude',
-    'RTN4R': 'Signaling by Amyloid-like protein_Claude',
-    'PROC': 'Signaling by Plasminogen Activator_Claude', 'PLG': 'Signaling by Plasminogen Activator_Claude',
-    'MMP2': 'Signaling by Plasminogen Activator_Claude',
-    'PTPRD': 'Signaling by RET receptors_Claude', 'PTPRS': 'Signaling by RET receptors_Claude',
-    'GP1BA': 'Signaling by von Willebrand factor_Claude',
-    'MT-RNR2': 'Signaling by Humanin_Claude',
-}
-
-liana['classification'] = liana.apply(
-    lambda r: MANUAL_LIGAND_CLASS.get(r['ligand'], r['classification'])
-    if pd.isna(r['classification']) else r['classification'],
-    axis=1
+ligand_class_uniprot = (
+    cpdb.dropna(subset=['gene_a', 'classification'])
+    .groupby('gene_a')['classification']
+    .agg(lambda x: x.mode()[0])
 )
 
-still_unmatched = liana[liana['classification'].isna()]['ligand'].unique()
-print(f"Still unmatched after manual: {len(still_unmatched)}")
-if len(still_unmatched) > 0:
-    print(still_unmatched.tolist())
+liana['lr_pair'] = liana['ligand'] + '|' + liana['receptor']
+liana['classification'] = liana['ligand'].map(ligand_class_uniprot)
+liana['source'] = liana['classification'].notna().map({True: 'cpdb_uniprot', False: None})
 
-# ── DEFINE BROAD CATEGORY GROUPINGS ───────────────────────────────────────────
+print(f"Total liana pairs:       {len(liana)}")
+print(f"Matched via uniprot:     {liana['source'].eq('cpdb_uniprot').sum()}")
+
+# ── SOURCE 2: special partner_a identifiers ───────────────────────────────────
+# e.g. GABA_byGAD1_and_SLC32A1, Acetylcholine_byCHAT, Glutamate_byGLS_and_SLC17A6
+# Parse out the biosynthetic gene name and map to CellPhoneDB classification.
+
+special = cpdb[cpdb['gene_a'].isna() & cpdb['classification'].notna()].copy()
+
+def parse_special_gene(partner_a):
+    """Extract primary gene symbol from special partner_a identifiers.
+    e.g. 'GABA_byGAD1_and_SLC32A1'    -> 'GAD1'
+         'Acetylcholine_byCHAT'        -> 'CHAT'
+         'Glutamate_byGLS_and_SLC1A1'  -> 'GLS'
+    """
+    if '_by' not in partner_a:
+        return None
+    after_by = partner_a.split('_by', 1)[1]
+    return after_by.split('_and_')[0]
+
+special['gene_a_parsed'] = special['partner_a'].apply(parse_special_gene)
+
+ligand_class_special = (
+    special.dropna(subset=['gene_a_parsed', 'classification'])
+    .groupby('gene_a_parsed')['classification']
+    .agg(lambda x: x.mode()[0])
+)
+
+# Liana ligands may be underscore-joined gene sets e.g. 'GAD1_SLC32A1'
+# Match by checking if any gene in the ligand name is in ligand_class_special
+def lookup_special(ligand):
+    genes = ligand.split('_')
+    for g in genes:
+        if g in ligand_class_special:
+            return ligand_class_special[g]
+    return None
+
+unmatched_mask = liana['source'].isna()
+liana.loc[unmatched_mask, 'classification'] = liana.loc[unmatched_mask, 'ligand'].apply(lookup_special)
+liana.loc[unmatched_mask & liana['classification'].notna(), 'source'] = 'cpdb_special'
+
+print(f"Matched via special id:  {liana['source'].eq('cpdb_special').sum()}")
+
+# ── SOURCE 3: manual annotations for 113 genuinely unclassified ligands ───────
+
+MANUAL_LIGAND_CLASS = {
+    # Synaptic adhesion
+    'NLGN4Y':   'Signaling by Neuroligin_manual',
+    'DAG1':     'Signaling by Neurexin_manual',
+    # Axon guidance
+    'SEMA4D':   'Signaling by Semaphorin_manual',
+    'UNC5A':    'Signaling by Netrin_manual',
+    # Notch
+    'JAG1':     'Signaling by Notch_manual',
+    'JAG2':     'Signaling by Notch_manual',
+    # Neurotrophic
+    'GDNF':     'Signaling by Neurotrophin_manual',
+    'NELL2':    'Signaling by Neurotrophin_manual',
+    'TULP1':    'Signaling by Neurotrophin_manual',
+    'NXNL1':    'Signaling by Neurotrophin_manual',
+    # Neuropeptide
+    'PENK':     'Signaling by Opioid_manual',
+    'KISS1':    'Signaling by Neuropeptide precursor_manual',
+    'MLN':      'Signaling by Neuropeptide precursor_manual',
+    'NSMF':     'Signaling by Neuropeptide precursor_manual',
+    'QRFP':     'Signaling by Neuropeptide precursor_manual',
+    'TRH':      'Signaling by Neuropeptide precursor_manual',
+    # Growth factor
+    'FGFR4':    'Signaling by Fibroblast growth factor_manual',
+    'PI16':     'Signaling by Fibroblast growth factor_manual',
+    'HGF':      'Signaling by Fibroblast growth factor_manual',
+    'NDP':      'Signaling by Vascular endothelial growth factor_manual',
+    # ECM/Adhesion
+    'LAMA2':    'Adhesion by Laminin_manual',
+    'FBN1':     'Adhesion by Fibronectin_manual',
+    'TGM2':     'Adhesion by Fibronectin_manual',
+    'CSPG4':    'Adhesion by Collagen/Integrin_manual',
+    'OMD':      'Adhesion by Collagen/Integrin_manual',
+    'LRPAP1':   'Adhesion by Collagen/Integrin_manual',
+    'ALCAM':    'Adhesion by CADM_manual',
+    'CHL1':     'Adhesion by L1CAM_manual',
+    'CNTN1':    'Adhesion by L1CAM_manual',
+    'MADCAM1':  'Adhesion by VCAM_manual',
+    'ESAM':     'Adhesion by JAM_manual',
+    'PECAM1':   'Adhesion by ICAM_manual',
+    'SDC2':     'Signaling by Syndecan_manual',
+    # Metabolic/Other
+    'MMP2':     'Signaling by Plasminogen Activator_manual',
+    'PLG':      'Signaling by Plasminogen Activator_manual',
+    'PROC':     'Signaling by Plasminogen Activator_manual',
+    'PTPRD':    'Signaling by RET receptors_manual',
+    'PTPRS':    'Signaling by RET receptors_manual',
+    'PRNP':     'Signaling by Amyloid-beta precursor protein_manual',
+    'RTN4R':    'Signaling by Amyloid-like protein_manual',
+    'GP1BA':    'Signaling by von Willebrand factor_manual',
+    'RBP4':     'Signaling by Retinoic Acid_manual',
+    'ALB':      'Signaling by Transferrin_manual',
+    'CD320':    'Signaling by Transferrin_manual',
+    'FTH1':     'Signaling by Transferrin_manual',
+    'FTL':      'Signaling by Transferrin_manual',
+    'HFE':      'Signaling by Transferrin_manual',
+    'LCN2':     'Signaling by Transferrin_manual',
+    'CLU':      'Signaling by Apolipoprotein_manual',
+    'SAA1':     'Signaling by Apolipoprotein_manual',
+    'HEBP1':    'Signaling by Prostaglandin_manual',
+    # Hormones
+    'REN':      'Signaling by Angiotensinogen_manual',
+    'FSHB':     'Signaling by Choriogonadotropin_manual',
+    'LHB':      'Signaling by Choriogonadotropin_manual',
+    'TSHB':     'Signaling by Choriogonadotropin_manual',
+    # Immune/Inflammatory — HLA
+    'HLA-E':    'Signaling by HLA_manual',
+    'HLA-F':    'Signaling by HLA_manual',
+    'BAG6':     'Signaling by HLA_manual',
+    'CD1D':     'Signaling by HLA_manual',
+    'ERVH48-1': 'Signaling by HLA_manual',
+    # Immune/Inflammatory — Chemokines
+    'C10orf99':  'Signaling by Chemokines_manual',
+    'CD200':     'Signaling by Chemokines_manual',
+    'CD226':     'Signaling by Chemokines_manual',
+    'CD24':      'Signaling by Chemokines_manual',
+    'CD248':     'Signaling by Chemokines_manual',
+    'CD34':      'Signaling by Chemokines_manual',
+    'CD44':      'Signaling by Chemokines_manual',
+    'CD47':      'Signaling by Chemokines_manual',
+    'CD48':      'Signaling by Chemokines_manual',
+    'CD52':      'Signaling by Chemokines_manual',
+    'CD55':      'Signaling by Chemokines_manual',
+    'CD58':      'Signaling by Chemokines_manual',
+    'CD99':      'Signaling by Chemokines_manual',
+    'CRTAM':     'Signaling by Chemokines_manual',
+    'MPZL1':     'Signaling by Chemokines_manual',
+    'PF4':       'Signaling by Chemokines_manual',
+    'PPIA':      'Signaling by Chemokines_manual',
+    'RNASET2':   'Signaling by Chemokines_manual',
+    'SIGLEC15':  'Signaling by Chemokines_manual',
+    'SPN':       'Signaling by Chemokines_manual',
+    'CD177':     'Signaling by Chemokines_manual',
+    # Immune/Inflammatory — TNF
+    'CD274':     'Signaling by Tumor necrosis factor_manual',
+    'CD276':     'Signaling by Tumor necrosis factor_manual',
+    'CD70':      'Signaling by Tumor necrosis factor_manual',
+    'PDCD1LG2':  'Signaling by Tumor necrosis factor_manual',
+    # Immune/Inflammatory — Interleukin
+    'ADIPOQ':    'Signaling by Interleukin_manual',
+    'BST2':      'Signaling by Interleukin_manual',
+    'CD40LG':    'Signaling by Interleukin_manual',
+    'CD80':      'Signaling by Interleukin_manual',
+    'CD86':      'Signaling by Interleukin_manual',
+    'CLCF1':     'Signaling by Interleukin_manual',
+    'CNTF':      'Signaling by Interleukin_manual',
+    'CRLF2':     'Signaling by Interleukin_manual',
+    'EPO':       'Signaling by Interleukin_manual',
+    'FLT3LG':    'Signaling by Interleukin_manual',
+    'ICOSLG':    'Signaling by Interleukin_manual',
+    'KITLG':     'Signaling by Interleukin_manual',
+    'LIF':       'Signaling by Interleukin_manual',
+    'MST1':      'Signaling by Interleukin_manual',
+    'THPO':      'Signaling by Interleukin_manual',
+    'TSLP':      'Signaling by Interleukin_manual',
+    # Immune/Inflammatory — Complement
+    'CD93':      'Signaling by Complement_manual',
+    'SFTPD':     'Signaling by Complement_manual',
+    # Immune/Inflammatory — NK/Killer cell
+    'CD96':      'Signaling by Killer Cell Lectin Like Receptor K1_manual',
+    'KLRB1':     'Signaling by Killer Cell Lectin Like Receptor K1_manual',
+    'MICA':      'Signaling by Killer Cell Lectin Like Receptor K1_manual',
+    'MICB':      'Signaling by Killer Cell Lectin Like Receptor K1_manual',
+    'NCR3LG1':   'Signaling by Killer Cell Lectin Like Receptor K1_manual',
+    # Immune/Inflammatory — FC receptor
+    'LAIR1':     'Signaling by FC receptor_manual',
+    'LCK':       'Signaling by FC receptor_manual',
+    'PTPRC':     'Signaling by FC receptor_manual',
+    # Immune/Inflammatory — other
+    'LEP':       'Signaling by Leptin_manual',
+    'PVR':       'Signaling by Poliovirus receptor_manual',
+    # Multi-gene complexes not caught by special lookup
+    'FGA_FGB_FGG':   'Adhesion by Fibribogen_manual',
+    'BMP15_GDF2':    'Signaling by BMP_manual',
+    'BMPR1B_BMPR2':  'Signaling by BMP_manual',
+    'CGA_CGB1':      'Signaling by Choriogonadotropin_manual',
+    'CGA_CGB2':      'Signaling by Choriogonadotropin_manual',
+    'CGA_CGB3':      'Signaling by Choriogonadotropin_manual',
+    'CGA_CGB7':      'Signaling by Choriogonadotropin_manual',
+    'CGA_FSHB':      'Signaling by Choriogonadotropin_manual',
+    'CGA_LHB':       'Signaling by Choriogonadotropin_manual',
+    'CGA_TSHB':      'Signaling by Choriogonadotropin_manual',
+    'GPHA2_GPHB5':   'Signaling by Choriogonadotropin_manual',
+    'INHBA_INHBB':   'Signaling by Inhibin/Activin_manual',
+    'INHA_INHBA':    'Signaling by Inhibin/Activin_manual',
+    'INHA_INHBB':    'Signaling by Inhibin/Activin_manual',
+    'EBI3_IL12A':    'Signaling by Interleukin_manual',
+    'EBI3_IL27':     'Signaling by Interleukin_manual',
+    'IL12A_IL12B':   'Signaling by Interleukin_manual',
+    'IL12B_IL23A':   'Signaling by Interleukin_manual',
+    'IL17A_IL17F':   'Signaling by Interleukin_manual',
+    'TYROBP':        'Signaling by Interleukin_manual',
+    'ITGAV_ITGB1':   'Signaling by Integrin_manual',
+    'ITGAV_ITGB3':   'Signaling by Integrin_manual',
+    'ITGAV_ITGB5':   'Signaling by Integrin_manual',
+    'B2M_CD1B':      'Signaling by HLA_manual',
+    'CBLN1_NRXN1':   'Signaling by Neurexin_manual',
+    'FLRT1_TENM2':   'Signaling by Teneurin_manual',
+    'FLRT1_TENM3':   'Signaling by Teneurin_manual',
+    'FLRT1_TENM4':   'Signaling by Teneurin_manual',
+    'FLRT3_TENM2':   'Signaling by Teneurin_manual',
+    'FLRT3_TENM3':   'Signaling by Teneurin_manual',
+    'FLRT3_TENM4':   'Signaling by Teneurin_manual',
+    'SULT1A1':       'Signaling by Dehydroepiandrosterone_manual',
+    'UBASH3B':       'Signaling by FC receptor_manual',
+    'PRXL2B':        'Signaling by Prostaglandin_manual',
+    'PTGIS':         'Signaling by Prostaglandin_manual',
+    'TPO':           'Signaling by Steroids_manual',
+}
+
+still_unmatched = liana['source'].isna()
+liana.loc[still_unmatched, 'classification'] = liana.loc[still_unmatched, 'ligand'].map(MANUAL_LIGAND_CLASS)
+liana.loc[still_unmatched & liana['classification'].notna(), 'source'] = 'manual'
+
+print(f"Matched via manual dict: {liana['source'].eq('manual').sum()}")
+print(f"Still unmatched:         {liana['source'].isna().sum()}")
+
+truly_unmatched = liana[liana['source'].isna()]['ligand'].unique()
+if len(truly_unmatched) > 0:
+    print(f"Unmatched ligands: {truly_unmatched.tolist()}")
+
+# ── BROAD CATEGORY MAP ────────────────────────────────────────────────────────
 
 CATEGORY_MAP = {
     'Signaling by Neuroligin':                                  'Synaptic adhesion',
@@ -235,6 +287,7 @@ CATEGORY_MAP = {
     'Signaling by Adrenaline':                                  'Monoamine signaling',
     'Signaling by Epinephrine':                                 'Monoamine signaling',
     'Signaling by Histamine':                                   'Monoamine signaling',
+    'Signaling by Melatonin':                                   'Monoamine signaling',
     'Signaling by Neuropeptide precursor':                      'Neuropeptide signaling',
     'Signaling by Somatostatin':                                'Neuropeptide signaling',
     'Signaling by Galanin':                                     'Neuropeptide signaling',
@@ -346,6 +399,7 @@ CATEGORY_MAP = {
     'Signaling by Estradiol':                                   'Lipid/Steroid',
     'Signaling by Progesterone':                                'Lipid/Steroid',
     'Signaling by Thromboxane':                                 'Lipid/Steroid',
+    'Signaling by Triiodothyronine':                            'Lipid/Steroid',
     'Signaling by Choriogonadotropin':                          'Hormones',
     'Signaling by Parathyroid hormone':                         'Hormones',
     'Signaling by Growth hormone-releasing hormone':            'Hormones',
@@ -380,22 +434,27 @@ CATEGORY_MAP = {
     'Signaling by Growth arrest':                               'Metabolic/Other',
 }
 
-# Add _Claude suffixed versions
-CATEGORY_MAP_FULL = {k: v for k, v in CATEGORY_MAP.items()}
+# Add _manual suffixed versions
+CATEGORY_MAP_FULL = dict(CATEGORY_MAP)
 for k, v in list(CATEGORY_MAP.items()):
-    CATEGORY_MAP_FULL[k + '_Claude'] = v
+    CATEGORY_MAP_FULL[k + '_manual'] = v
 
 liana['broad_category'] = liana['classification'].map(CATEGORY_MAP_FULL).fillna('Other')
 
 print(f"\nBroad category distribution:")
 print(liana['broad_category'].value_counts().to_string())
+print(f"\nSource distribution:")
+print(liana['source'].value_counts().to_string())
 
-# ── SAVE ANNOTATION FILES ─────────────────────────────────────────────────────
+# ── SAVE ANNOTATION CSV ───────────────────────────────────────────────────────
 
-liana[['ligand', 'receptor', 'lr_pair', 'classification', 'broad_category']].to_csv(
-    '/scratch/easmit31/cell_cell/cpdb_lr_annotations.csv', index=False
+out_csv = '/scratch/easmit31/cell_cell/cpdb_lr_annotations.csv'
+liana[['ligand', 'receptor', 'lr_pair', 'classification', 'broad_category', 'source']].to_csv(
+    out_csv, index=False
 )
-print(f"\n✓ Saved: cpdb_lr_annotations.csv")
+print(f"\n✓ Saved: {out_csv}")
+
+# ── SAVE lr_functional_annotations.py ────────────────────────────────────────
 
 lr_func_dict = dict(zip(liana['lr_pair'], liana['broad_category']))
 
@@ -433,12 +492,12 @@ FUNC_ORDER = [
     'Metabolic/Other', 'Other',
 ]
 
-out = Path('/scratch/easmit31/cell_cell/lr_functional_annotations.py')
-with open(out, 'w') as f:
+out_py = Path('/scratch/easmit31/cell_cell/lr_functional_annotations.py')
+with open(out_py, 'w') as f:
     f.write('"""\n')
     f.write('LR functional annotations derived from CellPhoneDB classification column.\n')
     f.write('Auto-generated by build_cpdb_annotations.py\n')
-    f.write('_Claude suffix = manually annotated, not directly from CellPhoneDB.\n')
+    f.write('Sources: cpdb_uniprot, cpdb_special, manual (_manual suffix).\n')
     f.write('Import with: from lr_functional_annotations import LR_FUNCTIONS, FUNC_COLORS, FUNC_ORDER\n')
     f.write('"""\n\n')
     f.write('LR_FUNCTIONS = {\n')
@@ -454,4 +513,4 @@ with open(out, 'w') as f:
         f.write(f'    {repr(cat)}: {repr(color)},\n')
     f.write('}\n')
 
-print(f"✓ Saved: {out}")
+print(f"✓ Saved: {out_py}")
