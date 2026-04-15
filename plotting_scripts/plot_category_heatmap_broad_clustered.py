@@ -18,11 +18,10 @@ import glob
 
 # ── paths ──────────────────────────────────────────────────────────────────
 BASE_DIR      = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected"
-CAT_ENRICH    = os.path.join(BASE_DIR, "hypergeometric_all_regions",
+CAT_ENRICH    = os.path.join(BASE_DIR, "hypergeometric_category",
                              "hypergeometric_category_enrichment_all_regions.csv")
-CATEGORY_DIR  = os.path.join(BASE_DIR, "hypergeometric_all_regions", "category_tables")
-OUT_DIR       = os.path.join(BASE_DIR, "hypergeometric_all_regions",
-                             "heatmaps_broad_clustered")
+CATEGORY_DIR  = os.path.join(BASE_DIR, "hypergeometric_category", "category_tables")
+OUT_DIR       = os.path.join(BASE_DIR, "hypergeometric_category", "heatmaps_broad_clustered")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 Q_THRESH  = 0.05
@@ -30,11 +29,10 @@ MAX_LR    = 30
 MAX_FIG_W = 40
 MAX_FIG_H = 20
 
-REGION_LABELS_INV = {
-    "ACC": "acc", "CN": "cn", "dlPFC": "dlpfc", "EC": "ec", "HIP": "hip",
-    "IPP": "ipp", "lCB": "lcb", "M1": "m1", "MB": "mb", "mdTN": "mdtn", "NAc": "nac",
+REGION_LABELS = {
+    "acc": "ACC", "cn": "CN", "dlpfc": "dlPFC", "ec": "EC", "hip": "HIP",
+    "ipp": "IPP", "lcb": "lCB", "m1": "M1", "mb": "MB", "mdtn": "mdTN", "nac": "NAc",
 }
-REGION_LABELS = {v: k for k, v in REGION_LABELS_INV.items()}
 
 # ── load ───────────────────────────────────────────────────────────────────
 cat_enrich = pd.read_csv(CAT_ENRICH)
@@ -48,6 +46,8 @@ for f in cat_files:
     df["receiver_broad"] = df["receiver"].str.replace(r"_\d+$","",regex=True)
     cat_dfs[cat_name] = df
 
+print(f"Loaded {len(cat_dfs)} category tables")
+
 # ── get significant combos ─────────────────────────────────────────────────
 sig_rows = []
 for _, row in cat_enrich.iterrows():
@@ -57,11 +57,11 @@ for _, row in cat_enrich.iterrows():
     ]:
         if row[qcol] < Q_THRESH:
             sig_rows.append({
-                "region":   row["region"],
-                "category": row["category"],
-                "direction": direction,
+                "region":        row["region"],
+                "category":      row["category"],
+                "direction":     direction,
                 "fold_enrichment": row[fecol],
-                "q_val": row[qcol],
+                "q_val":         row[qcol],
             })
 
 sig = pd.DataFrame(sig_rows)
@@ -69,13 +69,10 @@ print(f"Found {len(sig)} significant category × region × direction combos")
 
 # ── correlation-based column reordering ───────────────────────────────────
 def reorder_by_correlation(pivot):
-    """Reorder columns by correlation of their LR pair profiles."""
     if pivot.shape[1] <= 2:
         return pivot
-    # fill NaN with 0 for correlation calculation
     filled = pivot.fillna(0)
     corr   = filled.corr()
-    # greedy nearest-neighbor ordering
     remaining = list(corr.columns)
     ordered   = [remaining.pop(0)]
     while remaining:
@@ -95,10 +92,14 @@ for _, srow in sig.iterrows():
     q_val        = srow["q_val"]
     region_label = REGION_LABELS.get(region_key, region_key.upper())
 
-    if category not in cat_dfs:
+    # match category table filename
+    cat_key = category.replace(' ','_').replace('/','_')
+    matched = [k for k in cat_dfs if k.replace(' ','_').replace('/','_') == cat_key]
+    if not matched:
+        print(f"  No table for: {category}")
         continue
 
-    cat_df = cat_dfs[category]
+    cat_df = cat_dfs[matched[0]]
     sub = cat_df[
         (cat_df["region"] == region_key) &
         (cat_df["direction"] == direction)
@@ -109,27 +110,22 @@ for _, srow in sig.iterrows():
 
     sub["combo"] = sub["sender_broad"] + " → " + sub["receiver_broad"]
 
-    # top 30 LR pairs by frequency
     top_lrs = (sub.groupby("lr_pair").size()
                .sort_values(ascending=False)
                .head(MAX_LR).index.tolist())
     sub = sub[sub["lr_pair"].isin(top_lrs)]
 
-    # pivot: rows = lr_pair, cols = broad combo, values = mean age_coef
     pivot = sub.groupby(["lr_pair","combo"])["age_coef"].mean().unstack()
-    pivot = reorder_by_correlation(pivot.T).T  # correlation-based LR pair ordering
-
+    pivot = reorder_by_correlation(pivot.T).T
     if pivot.shape[0] == 0 or pivot.shape[1] == 0:
         continue
-
-    # reorder columns by correlation
     pivot = reorder_by_correlation(pivot)
 
     n_lr    = len(pivot)
     n_combo = len(pivot.columns)
 
     fig_w    = min(MAX_FIG_W, max(6, n_combo * 0.4))
-    fig_h    = min(MAX_FIG_H, max(4, n_lr    * 0.35))
+    fig_h    = min(MAX_FIG_H, max(4, n_lr * 0.35))
     fontsize = max(5, min(8, int(8 * 20 / max(n_lr, n_combo, 20))))
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
@@ -160,7 +156,7 @@ for _, srow in sig.iterrows():
 
     plt.tight_layout()
 
-    fname = f"heatmap_{category.replace(' ','_')}_{region_label}_{direction}.png"
+    fname = f"heatmap_{cat_key}_{region_label}_{direction}.png"
     fpath = os.path.join(OUT_DIR, fname)
     fig.savefig(fpath, dpi=150, bbox_inches="tight")
     plt.close()

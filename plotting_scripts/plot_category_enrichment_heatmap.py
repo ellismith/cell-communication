@@ -37,7 +37,7 @@ sig_tag   = "_sigonly"     if args.sig_only     else ""
 col_tag   = "_splitcolors" if args.split_colors else ""
 
 # ── paths ──────────────────────────────────────────────────────────────────
-IN_PATH = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results/hypergeometric_all_regions/hypergeometric_category_enrichment_all_regions_v2.csv"
+IN_PATH = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results/hypergeometric_all_regions/hypergeometric_category_enrichment_all_regions.csv"
 OUT_DIR = os.path.dirname(IN_PATH)
 
 Q_THRESH = 0.05

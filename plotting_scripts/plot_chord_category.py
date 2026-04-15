@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-Chord plots for significant synaptic adhesion interactions, one per region.
+Chord plots for significant interactions in any functional category, one per region.
 Optional grid mode showing all 11 regions in 3col x 4row layout.
 
 Usage:
-    python plot_chord_synaptic_adhesion.py --colorbar 0          # no colorbar
-    python plot_chord_synaptic_adhesion.py --colorbar 1          # shared colorbar
-    python plot_chord_synaptic_adhesion.py --grid                # 3x4 grid, per-plot colorbars
-    python plot_chord_synaptic_adhesion.py --grid --colorbar 1   # 3x4 grid, shared colorbar
-    python plot_chord_synaptic_adhesion.py --region dlPFC        # single region
+    python plot_chord_category.py --category "Synaptic adhesion" --colorbar 1
+    python plot_chord_category.py --category "Glutamate signaling" --grid --colorbar 1
+    python plot_chord_category.py --category "GABA signaling" --region dlPFC --colorbar 1
 """
 
 import pandas as pd
@@ -24,6 +22,8 @@ from pathlib import Path
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--category', type=str, required=True,
+                    help='Functional category to plot (must match broad_category in annotations)')
 parser.add_argument('--colorbar', type=int, default=-1,
                     help='1=shared colorbar, 0=no colorbar, omit=per-plot colorbar')
 parser.add_argument('--grid', action='store_true',
@@ -36,7 +36,10 @@ REGIONS      = ["ACC","CN","dlPFC","EC","HIP","IPP","lCb","M1","MB","mdTN","NAc"
 GRID_REGIONS = ["ACC","CN","dlPFC","EC","HIP","IPP","lCb","M1","MB","mdTN","NAc"]
 BASE_DIR     = Path("/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results")
 ANN_FILE     = Path("/scratch/easmit31/cell_cell/cpdb_lr_annotations.csv")
-OUT_DIR      = BASE_DIR / "chord_plots_synaptic_adhesion"
+
+# output dir named after category (spaces replaced with underscores)
+cat_slug = args.category.replace(' ', '_').replace('/', '_')
+OUT_DIR  = BASE_DIR / f"chord_plots_{cat_slug}"
 OUT_DIR.mkdir(exist_ok=True)
 
 CELLTYPE_COLORS = {
@@ -65,13 +68,17 @@ def get_color(c):
 
 ann = pd.read_csv(ANN_FILE)
 ann['lr_pair'] = ann['ligand'] + '|' + ann['receptor']
-syn_pairs = set(ann[ann['broad_category'] == 'Synaptic adhesion']['lr_pair'])
-print(f"Synaptic adhesion LR pairs: {len(syn_pairs)}")
+cat_pairs = set(ann[ann['broad_category'] == args.category]['lr_pair'])
+print(f"Category: {args.category}")
+print(f"LR pairs: {len(cat_pairs)}")
 
-# filter regions if --region specified
+if len(cat_pairs) == 0:
+    print("ERROR: No LR pairs found for this category. Check category name.")
+    print("Available categories:", sorted(ann['broad_category'].unique()))
+    exit(1)
+
 regions_to_load = [args.region] if args.region else REGIONS
 
-# load all edges
 all_edges = {}
 for region in regions_to_load:
     csv = BASE_DIR / f"regression_{region}" / f"whole_{region.lower()}_age_sex_regression.csv"
@@ -85,9 +92,10 @@ for region in regions_to_load:
         chunk['sender_class']   = parts[0].str.replace(r'_\d+$','',regex=True).apply(get_class)
         chunk['receiver_class'] = parts[1].str.replace(r'_\d+$','',regex=True).apply(get_class)
         chunk['lr_pair']        = parts[2] + '|' + parts[3]
-        sub = chunk[(chunk['age_qval'] < 0.05) & (chunk['lr_pair'].isin(syn_pairs))]
+        sub = chunk[(chunk['age_qval'] < 0.05) & (chunk['lr_pair'].isin(cat_pairs))]
         if len(sub): chunks.append(sub)
     if not chunks:
+        print(f"  No significant interactions for {region}")
         continue
     sig = pd.concat(chunks)
     edges = (sig.groupby(['sender_class','receiver_class'])
@@ -96,10 +104,9 @@ for region in regions_to_load:
     all_edges[region] = edges
 
 if not all_edges:
-    print("No data loaded — check paths.")
+    print("No data loaded for any region.")
     exit(1)
 
-# global colorscale
 all_coefs = pd.concat(all_edges.values())['mean_coef']
 global_vmax = max(all_coefs.abs().max(), 0.001)
 global_norm = TwoSlopeNorm(vmin=-global_vmax, vcenter=0, vmax=global_vmax)
@@ -173,14 +180,12 @@ def draw_on_ax(ax, region, edges, use_norm, show_cbar=False):
 
 # ── GRID MODE ──────────────────────────────────────────────────────────────
 if args.grid:
-    ncols = 3
-    nrows = 4
+    ncols = 3; nrows = 4
     n_regions = len(GRID_REGIONS)
 
     if args.colorbar == 1:
         fig = plt.figure(figsize=(ncols*7 + 1.2, nrows*6))
-        gs  = fig.add_gridspec(nrows, ncols+1,
-                                width_ratios=[7]*ncols + [0.6],
+        gs  = fig.add_gridspec(nrows, ncols+1, width_ratios=[7]*ncols + [0.6],
                                 hspace=0.05, wspace=0.02)
         axes = [fig.add_subplot(gs[r, c]) for r in range(nrows) for c in range(ncols)]
         cbar_ax = fig.add_subplot(gs[:, ncols])
@@ -192,17 +197,14 @@ if args.grid:
 
     for i, ax in enumerate(axes):
         if i >= n_regions:
-            ax.axis('off')
-            continue
+            ax.axis('off'); continue
         region = GRID_REGIONS[i]
         if region not in all_edges:
             ax.axis('off'); continue
         if args.colorbar == 1:
-            use_norm = global_norm
-            show_cbar = False
+            use_norm = global_norm; show_cbar = False
         elif args.colorbar == 0:
-            use_norm = global_norm
-            show_cbar = False
+            use_norm = global_norm; show_cbar = False
         else:
             coef_abs_max = max(all_edges[region]['mean_coef'].abs().max(), 0.001)
             use_norm = TwoSlopeNorm(vmin=-coef_abs_max, vcenter=0, vmax=coef_abs_max)
@@ -215,9 +217,9 @@ if args.grid:
         cbar.set_label('Age Effect', fontsize=11)
         cbar.ax.tick_params(labelsize=9)
 
-    fig.suptitle('Synaptic Adhesion Age Effects', fontsize=14, fontweight='bold', y=1.002)
+    fig.suptitle(f'{args.category} Age Effects', fontsize=14, fontweight='bold', y=1.002)
     suffix = f"_colorbar{args.colorbar}" if args.colorbar in [0,1] else "_percbar"
-    fname = OUT_DIR / f"grid_chord_synaptic_adhesion_11regions{suffix}.png"
+    fname = OUT_DIR / f"grid_chord_{cat_slug}_11regions{suffix}.png"
     fig.savefig(fname, dpi=200, bbox_inches='tight')
     plt.close()
     print(f"✓ {fname.name}")
@@ -240,11 +242,11 @@ else:
             sm = ScalarMappable(cmap=cmap, norm=use_norm); sm.set_array([])
             plt.colorbar(sm, ax=ax, shrink=0.35, pad=0.02).set_label('Age Effect', fontsize=9)
 
-        ax.set_title(f"{region} — Synaptic Adhesion\n"
+        ax.set_title(f"{region} — {args.category}\n"
                      f"Color=mean age effect | Width=n sig LR pairs (q<0.05)",
                      fontsize=12, fontweight='bold', pad=20)
         plt.tight_layout()
-        fname = OUT_DIR / f"{region.lower()}_chord_synaptic_adhesion.png"
+        fname = OUT_DIR / f"{region.lower()}_chord_{cat_slug}.png"
         fig.savefig(fname, dpi=200, bbox_inches='tight')
         plt.close()
         print(f"✓ {fname.name}")
