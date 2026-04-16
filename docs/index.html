@@ -21,6 +21,7 @@
   section { margin-bottom: 2rem; }
   h2 { font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem;
         padding-bottom: 0.5rem; border-bottom: 2px solid #1a1a2e; }
+  h3 { font-size: 1rem; font-weight: 500; margin: 1.25rem 0 0.75rem; color: #444; }
   .grid { display: flex; flex-wrap: wrap; gap: 1rem; }
   .thumb { background: white; border-radius: 8px; padding: 0.75rem;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1); width: 280px; }
@@ -28,22 +29,88 @@
                 border-radius: 4px; display: block; }
   .thumb p { font-size: 0.72rem; color: #555; margin-top: 0.5rem;
               word-break: break-word; line-height: 1.4; }
-  .thumb p.path { font-size: 0.65rem; color: #999; font-family: monospace; margin-top: 0.25rem;
-              word-break: break-word; line-height: 1.4; }
+  .thumb p.path { font-size: 0.65rem; color: #999; font-family: monospace;
+                   margin-top: 0.25rem; word-break: break-all; line-height: 1.3; }
+  .datafile { background: white; border-radius: 8px; padding: 0.85rem 1rem;
+               box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 0.6rem;
+               display: grid; grid-template-columns: 220px 1fr auto;
+               grid-template-rows: auto auto; gap: 0.2rem 1rem; align-items: start; }
+  .datafile a { font-weight: 500; color: #1a6fbf; text-decoration: none;
+                 font-size: 0.9rem; grid-row: 1; }
+  .datafile a:hover { text-decoration: underline; }
+  .datafile .fname { font-family: monospace; font-size: 0.78rem; color: #888;
+                      grid-column: 2; grid-row: 1; align-self: center; }
+  .datafile .desc { font-size: 0.78rem; color: #555; grid-column: 2; grid-row: 2; }
+  .datafile .size { font-size: 0.75rem; color: #aaa; grid-column: 3; grid-row: 1;
+                     white-space: nowrap; align-self: center; }
+  .hpcfile { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px;
+              padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+  .hpclabel { font-weight: 500; font-size: 0.88rem; display: block; margin-bottom: 0.3rem; }
+  .hpcfile code { font-size: 0.78rem; color: #c0392b; background: #fff5f5;
+                   padding: 0.2rem 0.4rem; border-radius: 3px; display: block;
+                   margin-bottom: 0.3rem; word-break: break-all; }
+  .hpcfile .desc { font-size: 0.75rem; color: #777; }
   hr { border: none; border-top: 1px solid #ddd; margin: 1.5rem 0; }
   footer { text-align: center; padding: 2rem; color: #888; font-size: 0.8rem; }
 </style>
 </head>
 <body>
 <header>
-  <h1>CCC Pipeline Results — Signaling Changes with Age</h1>
-  <p>Last updated: 2026-04-16 09:27 &nbsp;|&nbsp; 11 regions · 21 functional categories · 2,909 LR pairs</p>
-  <nav><a href="#celltype_heatmaps">Cell Type Enrichment Heatmaps</a>
+  <h1>CCC Pipeline Results — Brain Aging</h1>
+  <p>Last updated: 2026-04-16 09:36 &nbsp;|&nbsp; 11 regions · 21 functional categories · 2,909 LR pairs</p>
+  <nav><a href="#data">Data Files</a>
+<a href="#celltype_heatmaps">Cell Type Enrichment Heatmaps</a>
 <a href="#category_enrichment">Functional Category Enrichment Heatmaps</a>
 <a href="#lr_heatmaps">LR Pair Heatmaps by Category</a>
 <a href="#chord_plots">Chord Plots by Category</a></nav>
 </header>
 <main>
+    <section id="data">
+        <h2>Data Files</h2>
+        <h3>Downloads</h3>
+        
+        <div class="datafile">
+            <a href="data/cpdb_lr_annotations.csv" download>⬇ LR Pair Annotations</a>
+            <span class="fname">cpdb_lr_annotations.csv</span>
+            <span class="desc">2,909 LR pairs with classification, broad_category, and source</span>
+            <span class="size">0.3 MB</span>
+        </div>
+        <div class="datafile">
+            <a href="data/cellphonedb_interactions_liana_format.csv" download>⬇ LIANA Resource (LR pairs)</a>
+            <span class="fname">cellphonedb_interactions_liana_format.csv</span>
+            <span class="desc">LIANA-format LR resource used in CCC runs (ligand, receptor)</span>
+            <span class="size">0.0 MB</span>
+        </div>
+        <div class="datafile">
+            <a href="data/hypergeometric_category_enrichment_all_regions.csv" download>⬇ Hypergeometric Category Enrichment</a>
+            <span class="fname">hypergeometric_category_enrichment_all_regions.csv</span>
+            <span class="desc">Functional category enrichment × region × direction (q-values, fold enrichment)</span>
+            <span class="size">0.0 MB</span>
+        </div>
+        <h3>HPC Paths (too large for download)</h3>
+        
+        <div class="hpcfile">
+            <span class="hpclabel">Per-region regression results</span>
+            <code>/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results/regression_{REGION}/whole_{region}_age_sex_regression.csv</code>
+            <span class="desc">OLS regression (lr_means ~ age + sex) per interaction. ~1.5–5M rows per region. Columns: interaction, n_animals, mean_lr_means, age_coef, age_qval, sex_coef, sex_qval, r_squared</span>
+        </div>
+        <div class="hpcfile">
+            <span class="hpclabel">LR means matrices</span>
+            <code>/scratch/easmit31/cell_cell/results/lr_matrices/</code>
+            <span class="desc">Per-region LR means matrices built from per-animal LIANA outputs</span>
+        </div>
+        <div class="hpcfile">
+            <span class="hpclabel">Per-category LR tables</span>
+            <code>/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/hypergeometric_all_regions/category_tables/category_{Category}.csv</code>
+            <span class="desc">Age-significant LR pairs per functional category with sender/receiver and age coefficients</span>
+        </div>
+        <div class="hpcfile">
+            <span class="hpclabel">Per-animal LIANA outputs</span>
+            <code>/scratch/easmit31/cell_cell/results/per_animal_louvain_corrected/{ANIMAL}_{REGION}_louvain_results.csv</code>
+            <span class="desc">Raw LIANA CCC results per animal per region. 582 files total.</span>
+        </div>
+    </section>
+    <hr>
 
     <section id="celltype_heatmaps">
         <h2>Cell Type Enrichment Heatmaps</h2>
@@ -82,13 +149,6 @@
     <section id="category_enrichment">
         <h2>Functional Category Enrichment Heatmaps</h2>
         <div class="grid">
-        <div class="thumb">
-            <a href="img/category_enrichment/category_heatmap_combined_log2_clipped_sigonly.png" target="_blank">
-                <img src="img/category_enrichment/category_heatmap_combined_log2_clipped_sigonly.png" alt="category heatmap combined log2 clipped sigonly" loading="lazy">
-            </a>
-            <p>category heatmap combined log2 clipped sigonly</p>
-            <p class="path">within_region_analysis_corrected/hypergeometric_all_regions/category_heatmap_combined_log2_clipped_sigonly.png</p>
-        </div>
         <div class="thumb">
             <a href="img/category_enrichment/category_heatmap_strengthening_log2_clipped_sigonly_splitcolors.png" target="_blank">
                 <img src="img/category_enrichment/category_heatmap_strengthening_log2_clipped_sigonly_splitcolors.png" alt="category heatmap strengthening log2 clipped sigonly splitcolors" loading="lazy">
