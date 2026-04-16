@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCC Pipeline Results</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #f5f5f5; color: #222; }
+  header { background: #1a1a2e; color: white; padding: 1.5rem 2rem;
+            position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 1.4rem; font-weight: 500; }
+  header p  { font-size: 0.85rem; color: #aaa; margin-top: 0.25rem; }
+  nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+  nav a { color: #7eb8f7; text-decoration: none; font-size: 0.85rem;
+           padding: 0.2rem 0.6rem; border: 1px solid #7eb8f7;
+           border-radius: 4px; }
+  nav a:hover { background: #7eb8f7; color: #1a1a2e; }
+  main { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+  section { margin-bottom: 2rem; }
+  h2 { font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem;
+        padding-bottom: 0.5rem; border-bottom: 2px solid #1a1a2e; }
+  .grid { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .thumb { background: white; border-radius: 8px; padding: 0.75rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1); width: 280px; }
+  .thumb img { width: 100%; height: 200px; object-fit: contain;
+                border-radius: 4px; display: block; }
+  .thumb p { font-size: 0.72rem; color: #555; margin-top: 0.5rem;
+              word-break: break-word; line-height: 1.4; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 1.5rem 0; }
+  footer { text-align: center; padding: 2rem; color: #888; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CCC Pipeline Results — Brain Aging</h1>
+  <p>Last updated: 2026-04-16 09:08 &nbsp;|&nbsp; 11 regions · 21 functional categories · 2,909 LR pairs</p>
+  <nav><a href="#celltype_heatmaps">Cell Type Enrichment Heatmaps</a>
+<a href="#category_enrichment">Functional Category Enrichment Heatmaps</a>
+<a href="#lr_heatmaps">LR Pair Heatmaps by Category</a>
+<a href="#chord_plots">Chord Plots by Category</a></nav>
+</header>
+<main>
+
+    <section id="celltype_heatmaps">
+        <h2>Cell Type Enrichment Heatmaps</h2>
+        <div class="grid">
+        <div class="thumb">
+            <a href="img/celltype_heatmaps/heatmap_strengthening_receiver_log2_clipped_sigonly_splitcolors.png" target="_blank">
+                <img src="img/celltype_heatmaps/heatmap_strengthening_receiver_log2_clipped_sigonly_splitcolors.png" alt="heatmap strengthening receiver log2 clipped sigonly splitcolors" loading="lazy">
+            </a>
+            <p>heatmap strengthening receiver log2 clipped sigonly splitcolors</p>
+        </div>
+        <div class="thumb">
+            <a href="img/celltype_heatmaps/heatmap_strengthening_sender_log2_clipped_sigonly_splitcolors.png" target="_blank">
+                <img src="img/celltype_heatmaps/heatmap_strengthening_sender_log2_clipped_sigonly_splitcolors.png" alt="heatmap strengthening sender log2 clipped sigonly splitcolors" loading="lazy">
+            </a>
+            <p>heatmap strengthening sender log2 clipped sigonly splitcolors</p>
+        </div>
+        <div class="thumb">
+            <a href="img/celltype_heatmaps/heatmap_weakening_receiver_log2_clipped_sigonly_splitcolors.png" target="_blank">
+                <img src="img/celltype_heatmaps/heatmap_weakening_receiver_log2_clipped_sigonly_splitcolors.png" alt="heatmap weakening receiver log2 clipped sigonly splitcolors" loading="lazy">
+            </a>
+            <p>heatmap weakening receiver log2 clipped sigonly splitcolors</p>
+        </div>
+        <div class="thumb">
+            <a href="img/celltype_heatmaps/heatmap_weakening_sender_log2_clipped_sigonly_splitcolors.png" target="_blank">
+                <img src="img/celltype_heatmaps/heatmap_weakening_sender_log2_clipped_sigonly_splitcolors.png" alt="heatmap weakening sender log2 clipped sigonly splitcolors" loading="lazy">
+            </a>
+            <p>heatmap weakening sender log2 clipped sigonly splitcolors</p>
+        </div>
+        </div>
+    </section>
+    <hr>
+    <section id="category_enrichment">
+        <h2>Functional Category Enrichment Heatmaps</h2>
+        <div class="grid">
+        <div class="thumb">
+            <a href="img/category_enrichment/category_heatmap_combined_log2_clipped_sigonly.png" target="_blank">
+                <img src="img/category_enrichment/category_heatmap_combined_log2_clipped_sigonly.png" alt="category heatmap combined log2 clipped sigonly" loading="lazy">
+            </a>
+            <p>category heatmap combined log2 clipped sigonly</p>
+        </div>
+        <div class="thumb">
+            <a href="img/category_enrichment/category_heatmap_strengthening_log2_clipped_sigonly_splitcolors.png" target="_blank">
+                <img src="img/category_enrichment/category_heatmap_strengthening_log2_clipped_sigonly_splitcolors.png" alt="category heatmap strengthening log2 clipped sigonly splitcolors" loading="lazy">
+            </a>
+            <p>category heatmap strengthening log2 clipped sigonly splitcolors</p>
+        </div>
+        <div class="thumb">
+            <a href="img/category_enrichment/category_heatmap_weakening_log2_clipped_sigonly_splitcolors.png" target="_blank">
+                <img src="img/category_enrichment/category_heatmap_weakening_log2_clipped_sigonly_splitcolors.png" alt="category heatmap weakening log2 clipped sigonly splitcolors" loading="lazy">
+            </a>
+            <p>category heatmap weakening log2 clipped sigonly splitcolors</p>
+        </div>
+        </div>
+    </section>
+    <hr>
+    <section id="lr_heatmaps">
+        <h2>LR Pair Heatmaps by Category</h2>
+        <div class="grid">
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Axon_guidance_ACC_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Axon_guidance_ACC_strengthening.png" alt="heatmap Axon guidance ACC strengthening" loading="lazy">
+            </a>
+            <p>heatmap Axon guidance ACC strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Axon_guidance_IPP_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Axon_guidance_IPP_strengthening.png" alt="heatmap Axon guidance IPP strengthening" loading="lazy">
+            </a>
+            <p>heatmap Axon guidance IPP strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Axon_guidance_M1_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Axon_guidance_M1_strengthening.png" alt="heatmap Axon guidance M1 strengthening" loading="lazy">
+            </a>
+            <p>heatmap Axon guidance M1 strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Axon_guidance_dlPFC_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Axon_guidance_dlPFC_strengthening.png" alt="heatmap Axon guidance dlPFC strengthening" loading="lazy">
+            </a>
+            <p>heatmap Axon guidance dlPFC strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Axon_guidance_lCB_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Axon_guidance_lCB_weakening.png" alt="heatmap Axon guidance lCB weakening" loading="lazy">
+            </a>
+            <p>heatmap Axon guidance lCB weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_GABA_signaling_lCB_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_GABA_signaling_lCB_strengthening.png" alt="heatmap GABA signaling lCB strengthening" loading="lazy">
+            </a>
+            <p>heatmap GABA signaling lCB strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_ACC_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_ACC_strengthening.png" alt="heatmap Glutamate signaling ACC strengthening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling ACC strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_CN_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_CN_strengthening.png" alt="heatmap Glutamate signaling CN strengthening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling CN strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_CN_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_CN_weakening.png" alt="heatmap Glutamate signaling CN weakening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling CN weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_EC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_EC_weakening.png" alt="heatmap Glutamate signaling EC weakening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling EC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_IPP_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_IPP_strengthening.png" alt="heatmap Glutamate signaling IPP strengthening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling IPP strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_IPP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_IPP_weakening.png" alt="heatmap Glutamate signaling IPP weakening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling IPP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_M1_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_M1_strengthening.png" alt="heatmap Glutamate signaling M1 strengthening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling M1 strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_M1_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_M1_weakening.png" alt="heatmap Glutamate signaling M1 weakening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling M1 weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_dlPFC_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_dlPFC_strengthening.png" alt="heatmap Glutamate signaling dlPFC strengthening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling dlPFC strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glutamate_signaling_dlPFC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glutamate_signaling_dlPFC_weakening.png" alt="heatmap Glutamate signaling dlPFC weakening" loading="lazy">
+            </a>
+            <p>heatmap Glutamate signaling dlPFC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Glycine_signaling_CN_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Glycine_signaling_CN_weakening.png" alt="heatmap Glycine signaling CN weakening" loading="lazy">
+            </a>
+            <p>heatmap Glycine signaling CN weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_EC_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_EC_strengthening.png" alt="heatmap Growth Factor Neurotrophic EC strengthening" loading="lazy">
+            </a>
+            <p>heatmap Growth Factor Neurotrophic EC strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_HIP_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_HIP_strengthening.png" alt="heatmap Growth Factor Neurotrophic HIP strengthening" loading="lazy">
+            </a>
+            <p>heatmap Growth Factor Neurotrophic HIP strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_HIP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_HIP_weakening.png" alt="heatmap Growth Factor Neurotrophic HIP weakening" loading="lazy">
+            </a>
+            <p>heatmap Growth Factor Neurotrophic HIP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_lCB_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Growth_Factor_Neurotrophic_lCB_weakening.png" alt="heatmap Growth Factor Neurotrophic lCB weakening" loading="lazy">
+            </a>
+            <p>heatmap Growth Factor Neurotrophic lCB weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Immune_Inflammatory_IPP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Immune_Inflammatory_IPP_weakening.png" alt="heatmap Immune Inflammatory IPP weakening" loading="lazy">
+            </a>
+            <p>heatmap Immune Inflammatory IPP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Lipid_signaling_NAc_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Lipid_signaling_NAc_strengthening.png" alt="heatmap Lipid signaling NAc strengthening" loading="lazy">
+            </a>
+            <p>heatmap Lipid signaling NAc strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Neuropeptide_signaling_M1_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Neuropeptide_signaling_M1_strengthening.png" alt="heatmap Neuropeptide signaling M1 strengthening" loading="lazy">
+            </a>
+            <p>heatmap Neuropeptide signaling M1 strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Notch_Hedgehog_ACC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Notch_Hedgehog_ACC_weakening.png" alt="heatmap Notch Hedgehog ACC weakening" loading="lazy">
+            </a>
+            <p>heatmap Notch Hedgehog ACC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Notch_Hedgehog_EC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Notch_Hedgehog_EC_weakening.png" alt="heatmap Notch Hedgehog EC weakening" loading="lazy">
+            </a>
+            <p>heatmap Notch Hedgehog EC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Notch_Hedgehog_IPP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Notch_Hedgehog_IPP_weakening.png" alt="heatmap Notch Hedgehog IPP weakening" loading="lazy">
+            </a>
+            <p>heatmap Notch Hedgehog IPP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Notch_Hedgehog_M1_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Notch_Hedgehog_M1_weakening.png" alt="heatmap Notch Hedgehog M1 weakening" loading="lazy">
+            </a>
+            <p>heatmap Notch Hedgehog M1 weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Steroid_Retinoid_signaling_M1_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Steroid_Retinoid_signaling_M1_strengthening.png" alt="heatmap Steroid Retinoid signaling M1 strengthening" loading="lazy">
+            </a>
+            <p>heatmap Steroid Retinoid signaling M1 strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Steroid_Retinoid_signaling_MB_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Steroid_Retinoid_signaling_MB_strengthening.png" alt="heatmap Steroid Retinoid signaling MB strengthening" loading="lazy">
+            </a>
+            <p>heatmap Steroid Retinoid signaling MB strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_ACC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_ACC_weakening.png" alt="heatmap Synaptic adhesion ACC weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion ACC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_EC_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_EC_strengthening.png" alt="heatmap Synaptic adhesion EC strengthening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion EC strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_EC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_EC_weakening.png" alt="heatmap Synaptic adhesion EC weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion EC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_HIP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_HIP_weakening.png" alt="heatmap Synaptic adhesion HIP weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion HIP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_IPP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_IPP_weakening.png" alt="heatmap Synaptic adhesion IPP weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion IPP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_M1_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_M1_weakening.png" alt="heatmap Synaptic adhesion M1 weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion M1 weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_NAc_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_NAc_weakening.png" alt="heatmap Synaptic adhesion NAc weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion NAc weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Synaptic_adhesion_dlPFC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Synaptic_adhesion_dlPFC_weakening.png" alt="heatmap Synaptic adhesion dlPFC weakening" loading="lazy">
+            </a>
+            <p>heatmap Synaptic adhesion dlPFC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_CN_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_CN_strengthening.png" alt="heatmap Teneurin Latrophilin CN strengthening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin CN strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_CN_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_CN_weakening.png" alt="heatmap Teneurin Latrophilin CN weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin CN weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_EC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_EC_weakening.png" alt="heatmap Teneurin Latrophilin EC weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin EC weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_HIP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_HIP_weakening.png" alt="heatmap Teneurin Latrophilin HIP weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin HIP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_IPP_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_IPP_weakening.png" alt="heatmap Teneurin Latrophilin IPP weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin IPP weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_M1_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_M1_weakening.png" alt="heatmap Teneurin Latrophilin M1 weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin M1 weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_MB_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_MB_strengthening.png" alt="heatmap Teneurin Latrophilin MB strengthening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin MB strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_MB_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_MB_weakening.png" alt="heatmap Teneurin Latrophilin MB weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin MB weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_NAc_strengthening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_NAc_strengthening.png" alt="heatmap Teneurin Latrophilin NAc strengthening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin NAc strengthening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_NAc_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_NAc_weakening.png" alt="heatmap Teneurin Latrophilin NAc weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin NAc weakening</p>
+        </div>
+        <div class="thumb">
+            <a href="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_dlPFC_weakening.png" target="_blank">
+                <img src="img/lr_heatmaps/heatmap_Teneurin_Latrophilin_dlPFC_weakening.png" alt="heatmap Teneurin Latrophilin dlPFC weakening" loading="lazy">
+            </a>
+            <p>heatmap Teneurin Latrophilin dlPFC weakening</p>
+        </div>
+        </div>
+    </section>
+    <hr>
+    <section id="chord_plots">
+        <h2>Chord Plots by Category</h2>
+        <div class="grid">
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Axon_guidance_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Axon_guidance_11regions_percbar.png" alt="grid chord Axon guidance 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Axon guidance 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_ECM_Adhesion_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_ECM_Adhesion_11regions_percbar.png" alt="grid chord ECM Adhesion 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord ECM Adhesion 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_GABA_signaling_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_GABA_signaling_11regions_percbar.png" alt="grid chord GABA signaling 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord GABA signaling 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Glutamate_signaling_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Glutamate_signaling_11regions_percbar.png" alt="grid chord Glutamate signaling 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Glutamate signaling 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Glycine_signaling_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Glycine_signaling_11regions_percbar.png" alt="grid chord Glycine signaling 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Glycine signaling 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Growth_Factor_Neurotrophic_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Growth_Factor_Neurotrophic_11regions_percbar.png" alt="grid chord Growth Factor Neurotrophic 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Growth Factor Neurotrophic 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Hormones_Endocrine_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Hormones_Endocrine_11regions_percbar.png" alt="grid chord Hormones Endocrine 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Hormones Endocrine 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Immune_Inflammatory_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Immune_Inflammatory_11regions_percbar.png" alt="grid chord Immune Inflammatory 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Immune Inflammatory 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Metabolic_Other_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Metabolic_Other_11regions_percbar.png" alt="grid chord Metabolic Other 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Metabolic Other 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Neuropeptide_signaling_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Neuropeptide_signaling_11regions_percbar.png" alt="grid chord Neuropeptide signaling 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Neuropeptide signaling 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Notch_Hedgehog_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Notch_Hedgehog_11regions_percbar.png" alt="grid chord Notch Hedgehog 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Notch Hedgehog 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Purinergic_signaling_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Purinergic_signaling_11regions_percbar.png" alt="grid chord Purinergic signaling 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Purinergic signaling 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Synapse_organization_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Synapse_organization_11regions_percbar.png" alt="grid chord Synapse organization 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Synapse organization 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Synaptic_adhesion_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Synaptic_adhesion_11regions_percbar.png" alt="grid chord Synaptic adhesion 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Synaptic adhesion 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Teneurin_Latrophilin_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Teneurin_Latrophilin_11regions_percbar.png" alt="grid chord Teneurin Latrophilin 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Teneurin Latrophilin 11regions percbar</p>
+        </div>
+        <div class="thumb">
+            <a href="img/chord_plots/grid_chord_Wnt_signaling_11regions_percbar.png" target="_blank">
+                <img src="img/chord_plots/grid_chord_Wnt_signaling_11regions_percbar.png" alt="grid chord Wnt signaling 11regions percbar" loading="lazy">
+            </a>
+            <p>grid chord Wnt signaling 11regions percbar</p>
+        </div>
+        </div>
+    </section>
+    <hr>
+</main>
+<footer>
+  Generated by generate_gallery.py &nbsp;|&nbsp; easmit31 / cell-communication
+</footer>
+</body>
+</html>
