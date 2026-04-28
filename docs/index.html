@@ -14,14 +14,30 @@
   header p  { font-size: 0.85rem; color: #aaa; margin-top: 0.25rem; }
   nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
   nav a { color: #7eb8f7; text-decoration: none; font-size: 0.85rem;
-           padding: 0.2rem 0.6rem; border: 1px solid #7eb8f7;
-           border-radius: 4px; }
+           padding: 0.2rem 0.6rem; border: 1px solid #7eb8f7; border-radius: 4px; }
   nav a:hover { background: #7eb8f7; color: #1a1a2e; }
   main { max-width: 1600px; margin: 0 auto; padding: 2rem; }
   section { margin-bottom: 2rem; }
   h2 { font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem;
         padding-bottom: 0.5rem; border-bottom: 2px solid #1a1a2e; }
   h3 { font-size: 1rem; font-weight: 500; margin: 1.25rem 0 0.75rem; color: #444; }
+  .readme-box { background: white; border-radius: 8px; padding: 2rem;
+                 box-shadow: 0 1px 4px rgba(0,0,0,0.1); line-height: 1.7;
+                 font-size: 0.9rem; }
+  .readme-box h1 { font-size: 1.4rem; margin-bottom: 1rem; color: #1a1a2e; }
+  .readme-box h2 { font-size: 1.1rem; border-bottom: 1px solid #ddd;
+                    padding-bottom: 0.3rem; margin: 1.5rem 0 0.75rem; }
+  .readme-box h3 { font-size: 0.95rem; margin: 1rem 0 0.5rem; }
+  .readme-box pre { background: #f0f0f0; padding: 1rem; border-radius: 4px;
+                     overflow-x: auto; font-size: 0.78rem; margin: 0.75rem 0; }
+  .readme-box code { font-family: monospace; font-size: 0.82rem;
+                      background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .readme-box pre code { background: none; padding: 0; }
+  .readme-box li { margin-left: 1.5rem; margin-bottom: 0.25rem; }
+  .readme-box table { border-collapse: collapse; width: 100%; margin: 0.75rem 0;
+                       font-size: 0.82rem; }
+  .readme-box td, .readme-box th { border: 1px solid #ddd; padding: 0.4rem 0.6rem; }
+  .readme-box tr:nth-child(even) { background: #f9f9f9; }
   .grid { display: flex; flex-wrap: wrap; gap: 1rem; }
   .thumb { background: white; border-radius: 8px; padding: 0.75rem;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1); width: 280px; }
@@ -57,8 +73,9 @@
 <body>
 <header>
   <h1>Cell-cell Communication Changes in the Brain with Age</h1>
-  <p>Last updated: 2026-04-28 09:53 &nbsp;|&nbsp; 11 regions · 21 functional categories · 2,909 LR pairs</p>
-  <nav><a href="#data">Data Files</a>
+  <p>Last updated: 2026-04-28 10:22 &nbsp;|&nbsp; 11 regions · 21 functional categories · 2,909 LR pairs</p>
+  <nav><a href="#readme">About</a>
+<a href="#data">Data Files</a>
 <a href="#celltype_heatmaps">Cell Type Enrichment Heatmaps</a>
 <a href="#category_enrichment">Functional Category Enrichment Heatmaps</a>
 <a href="#lr_heatmaps">LR Pair Heatmaps by Category</a>
@@ -66,6 +83,167 @@
 <a href="#focal_heatmaps">Focal LR Pair Heatmaps (NLGN/NRXN, CX3CL1, IL34)</a></nav>
 </header>
 <main>
+    <section id="readme">
+        <h2>About</h2>
+        <div class="readme-box"><h1>Cell-Cell Communication Analysis Pipeline</h1>
+
+Age-related changes in ligand-receptor signaling across 11 brain regions in non-human primates (NHP), analyzed at single-cell resolution using LIANA + CellPhoneDB v5.
+
+<h2>Dataset</h2>
+<li>53 rhesus macaques (age range 2.5–21 years)</li>
+<li>11 brain regions: ACC, CN, dlPFC, EC, HIP, IPP, lCb, M1, MB, mdTN, NAc</li>
+<li>12 cell types: Astrocyte, GABAergic, Glutamatergic, Microglia, Oligodendrocyte, OPC, Vascular, Basket, Cerebellar, Ependymal, Midbrain, MSN</li>
+<li>2,909 ligand-receptor pairs from CellPhoneDB v5 (corrected resource with complexes intact)</li>
+
+<h2>Pipeline Overview</h2>
+<pre><code>Per-animal snRNA-seq (h5ad)
+        ↓
+Step 1: Per-animal LIANA/CellPhoneDB v5 CCC
+        run_per_animal_louvain_ccc.py
+        → results/per_animal_louvain_corrected/
+        ↓
+Step 2: Build LR means matrix per region
+        build_lr_matrix.py
+        → results/lr_matrices/
+        ↓
+Step 3: Whole-region OLS regression (lr_means ~ age + sex)
+        run_age_sex_regression.py
+        → results/within_region_analysis_corrected/regression_results/regression_{Region}/
+        ↓
+Step 4a: Hypergeometric enrichment by cell type × role × direction
+         hypergeometric_enrichment_all_regions.py
+         → results/within_region_analysis_corrected/hypergeometric_all_regions/
+        ↓
+Step 4b: Hypergeometric enrichment by functional LR category × direction
+         hypergeometric_category_enrichment.py
+         → results/within_region_analysis_corrected/hypergeometric_category/
+        ↓
+Step 4c: Build per-category LR tables
+         build_category_lr_tables.py
+         → results/within_region_analysis_corrected/hypergeometric_category/category_tables/
+        ↓
+Step 5: Visualization
+        plotting_scripts/plot_*.py
+<pre><code>
+<h2>Key Scripts</h2>
+
+<h3>CCC Pipeline</h3>
+<tr><td>Script</td><td>Description |
+|--------|-------------|
+<tr><td><code>run_per_animal_louvain_ccc.py</code></td><td>Per-animal LIANA CCC using CellPhoneDB v5. Runs on HPC via SLURM. Validates 2,909 LR pairs at startup. Parameters: <code>expr_prop=0.05</code>, FDR on <code>cellphone_pvals</code> |
+<tr><td><code>build_lr_matrix.py</code></td><td>Builds lr_means matrix from per-animal CSV files. Args: <code>--region</code>, <code>--threshold</code>, <code>--min_age</code>, <code>--input_dir</code>, <code>--output_name</code> |
+<tr><td><code>run_age_sex_regression.py</code></td><td>OLS regression (<code>lr_means ~ age + sex</code>) per interaction. Args: <code>--region</code>, <code>--min_animals</code> (default 10), <code>--min_age</code>, <code>--exclude_animals</code>, <code>--matrix_file</code>, <code>--output_suffix</code> |
+
+<h3>Annotations</h3>
+<tr><td>File/Script</td><td>Description |
+|--------|-------------|
+<tr><td><code>build_cpdb_annotations.py</code></td><td>Builds <code>cpdb_lr_annotations.csv</code> from CellPhoneDB source files. Three-source lookup: uniprot → special identifiers → manual. Produces 2,909 LR pairs across 21 broad functional categories. |
+<tr><td><code>CellPhoneDB-data/interaction_input_CellPhoneDB.csv</code></td><td>Raw CellPhoneDB interaction table (2,911 rows) |
+<tr><td><code>CellPhoneDB-data/gene_input.csv</code></td><td>Uniprot → gene symbol mapping |
+<tr><td><code>CellPhoneDB-data/cellphonedb_interactions_liana_format.csv</code></td><td>LIANA-format LR pairs (ligand, receptor columns) |
+<tr><td><code>cpdb_lr_annotations.csv</code></td><td>Final LR pair annotations: <code>ligand</code>, <code>receptor</code>, <code>lr_pair</code>, <code>classification</code>, <code>broad_category</code>, <code>source</code> |
+<tr><td><code>lr_functional_annotations.py</code></td><td>Auto-generated Python file with <code>LR_FUNCTIONS</code>, <code>FUNC_COLORS</code>, <code>FUNC_ORDER</code> dicts for plotting |
+
+<h3>Enrichment Analysis</h3>
+<tr><td>Script</td><td>Description |
+|--------|-------------|
+<tr><td><code>hypergeometric_enrichment_all_regions.py</code></td><td>Hypergeometric enrichment and depletion tests for age-associated LR pairs by cell type × role (sender/receiver) × direction (strengthening/weakening) across all 11 regions. Single global BH-FDR correction. |
+<tr><td><code>hypergeometric_category_enrichment.py</code></td><td>Hypergeometric enrichment and depletion tests for age-associated LR pairs by functional category × direction across all 11 regions. Single global BH-FDR correction across all tests. Uses <code>cpdb_lr_annotations.csv</code>. |
+<tr><td><code>build_category_lr_tables.py</code></td><td>Builds per-category CSV tables of all age-significant LR pairs for use in heatmap plotting. |
+
+<h3>Visualization</h3>
+<tr><td>Script</td><td>Description |
+|--------|-------------|
+<tr><td><code>plotting_scripts/plot_category_enrichment_heatmap.py</code></td><td>Heatmaps of functional category fold enrichment × region, for strengthening and weakening. Args: <code>--log</code>, <code>--clip</code>, <code>--sig_only</code>, <code>--split_colors</code> |
+<tr><td><code>plotting_scripts/plot_category_heatmap_broad_clustered.py</code></td><td>Per-category LR pair heatmaps: rows = LR pairs, columns = broad sender→receiver, columns clustered by correlation. Only plots significant category × region × direction combos. |
+<tr><td><code>plotting_scripts/plot_chord_category.py</code></td><td>Chord plots for any functional category. Args: <code>--category</code>, <code>--grid</code>, <code>--region</code>, <code>--colorbar</code> |
+<tr><td><code>plotting_scripts/plot_hypergeometric_heatmaps.py</code></td><td>Heatmaps of fold enrichment by cell type × region. Args: <code>--log</code>, <code>--clip</code>, <code>--sig_only</code>, <code>--split_colors</code> |
+<tr><td><code>plotting_scripts/plot_regression_region_celltype_heatmap.py</code></td><td>Heatmap: mean age_coef per cell type pair × region |
+<tr><td><code>plotting_scripts/plot_regression_per_region_dotplot.py</code></td><td>Per-region dot plot from regression outputs |
+
+<h2>Output Structure</h2>
+<pre><code>results/
+├── per_animal_louvain_corrected/           # Per-animal LIANA outputs (corrected resource)
+├── lr_matrices/                            # LR means matrices per region
+└── within_region_analysis_corrected/
+    ├── regression_results/
+    │   ├── regression_{Region}/
+    │   │   └── whole_{region}_age_sex_regression.csv
+    │   └── chord_plots_{category}/         # Chord plots per functional category
+    ├── hypergeometric_all_regions/         # Cell type enrichment
+    │   └── hypergeometric_enrichment_all_regions.csv
+    └── hypergeometric_category/            # Functional category enrichment
+        ├── hypergeometric_category_enrichment_all_regions.csv
+        ├── category_tables/                # Per-category LR pair CSVs
+        │   └── category_{Category}.csv
+        └── heatmaps_broad_clustered/       # LR pair heatmaps per category
+<pre><code>
+<h2>Regression Output Format</h2>
+
+<code>whole_{region}_age_sex_regression.csv</code> columns:
+<li><code>interaction</code>: <code>source_louvain|target_louvain|ligand_complex|receptor_complex</code></li>
+<li><code>n_animals</code>: number of animals with data for this interaction</li>
+<li><code>mean_lr_means</code>: mean lr_means across animals</li>
+<li><code>age_coef</code>, <code>age_stderr</code>, <code>age_pval</code>, <code>age_qval</code>: age effect (OLS, BH-FDR)</li>
+<li><code>sex_coef</code>, <code>sex_stderr</code>, <code>sex_pval</code>, <code>sex_qval</code>: sex effect</li>
+<li><code>r_squared</code>: model R²</li>
+
+<h2>Hypergeometric Enrichment Output Format</h2>
+
+<code>hypergeometric_enrichment_all_regions.csv</code> columns:
+<li><code>region</code>, <code>cell_type</code>, <code>role</code> (<code>sender</code>/<code>receiver</code>)</li>
+<li><code>n_tested</code>, <code>k_pos</code>, <code>expected_pos</code>, <code>fold_enrichment_pos</code></li>
+<li><code>k_neg</code>, <code>expected_neg</code>, <code>fold_enrichment_neg</code></li>
+<li><code>p_pos_enrich</code>, <code>p_pos_deplete</code>, <code>p_neg_enrich</code>, <code>p_neg_deplete</code></li>
+<li><code>q_pos_enrich</code>, <code>q_pos_deplete</code>, <code>q_neg_enrich</code>, <code>q_neg_deplete</code></li>
+
+<code>hypergeometric_category_enrichment_all_regions.csv</code> columns:
+<li><code>region</code>, <code>category</code>, <code>n_category</code></li>
+<li><code>k_pos</code>, <code>expected_pos</code>, <code>fold_enrichment_pos</code></li>
+<li><code>k_neg</code>, <code>expected_neg</code>, <code>fold_enrichment_neg</code></li>
+<li><code>p_pos_enrich</code>, <code>p_pos_deplete</code>, <code>p_neg_enrich</code>, <code>p_neg_deplete</code></li>
+<li><code>q_pos_enrich</code>, <code>q_pos_deplete</code>, <code>q_neg_enrich</code>, <code>q_neg_deplete</code></li>
+
+<h2>Functional LR Categories</h2>
+
+21 broad categories covering 2,909 LR pairs. Classification source tracked per pair (<code>cpdb_uniprot</code>, <code>cpdb_special</code>, <code>manual</code>).
+
+<tr><td>Broad category</td><td>n</td><td>All LR pair types</td><td>Function |
+|---|---|---|---|
+<tr><td>Wnt signaling</td><td>492</td><td>WNT (478), R-spondin (14)</td><td>Cell fate, proliferation, synaptic plasticity via β-catenin and non-canonical pathways |
+<tr><td>Glutamate signaling</td><td>400</td><td>Glutamate biosynthetic/transport complexes (400)</td><td>Primary excitatory neurotransmission; biosynthesis, vesicular loading, reuptake |
+<tr><td>Immune/Inflammatory</td><td>323</td><td>Chemokines (119), Interleukin (68), TNF (37), HLA (23), Interferon (20), Complement (12), FC receptor (12), NK/Killer cell (11), Galectin (4), Poliovirus receptor (4), Selectin (4), CSF (3), Lymphotactin (2), Oncostatin-M (2), Pro-MHC (2)</td><td>Neuroinflammation, microglial activation, immune surveillance, cytokine signaling |
+<tr><td>ECM/Adhesion</td><td>285</td><td>Collagen/Integrin (178), Fibronectin (20), ICAM (13), CEAM (10), Cadherin (9), Nectin (7), Desmosome (6), Laminin (6), Integrin (6), JAM (5), tenascin (5), VCAM (5), THY1 (5), Podocalyxin (4), Osteopontin (3), Vitronectin (3)</td><td>Structural cell-matrix and cell-cell adhesion; tissue integrity and non-synaptic contact |
+<tr><td>Growth Factor/Neurotrophic</td><td>252</td><td>BMP (53), FGF (30), GDF (29), Inhibin/Activin (28), VEGF (13), TGFβ (13), Neurotrophin (11), IGF (10), EGF (8), Neuregulin (7), PDGF (7), NODAL (6), RET (6), Pro-neuregulin (5), Placenta GF (4), AMH (3), Betacellulin (3), BDNF (3), NGF (3), Midkine (2), Left-right determination (2), Pleiotrophin (2), Reelin (2), Sclerostin (2)</td><td>Neuronal survival, proliferation, differentiation, myelination; RTK and Smad signaling |
+<tr><td>GABA signaling</td><td>238</td><td>GABA biosynthetic/transport complexes (238)</td><td>Primary inhibitory neurotransmission; biosynthesis, vesicular loading, reuptake |
+<tr><td>Monoamine signaling</td><td>177</td><td>Serotonin (78), Serotonin/Dopamine (39), Adrenaline (27), Noradrenaline (27), Histamine (4), Melatonin (2)</td><td>Modulatory neurotransmission; mood, arousal, reward, autonomic function |
+<tr><td>Neuropeptide signaling</td><td>145</td><td>Neuropeptide precursor (13), Somatostatin (12), Galanin (12), POMC (8), Peptide YY (8), Opioid (8), Urocortin/Urotensin (7), Tachykinins (6), Gastrin (6), Neuromedin (6), Agouti-related (5), Adrenomedullin (4), VIP (4), TAFA (4), Prokineticin (4), Oxytocin (4), Calcitonin (4), Amylin (4), Vasopressin (4), Pituitary adenylate (3), Pro-glucagon (3), Neurotensin (3), Secretin (3), Orexin (2), CRF (2), Spexin (2), CCK (2), Apelin (2)</td><td>Slow neuromodulation via GPCRs; pain, stress, social behavior, homeostasis |
+<tr><td>Axon guidance</td><td>98</td><td>Ephrin (55), Semaphorin (22), L1CAM (9), Netrin (9), SLIT (3)</td><td>Directional axon navigation, fasciculation, circuit wiring via repulsive/attractive cues |
+<tr><td>Steroid/Retinoid signaling</td><td>89</td><td>Retinoic acid (34), Steroids (23), DHEA (9), Progesterone (9), Cholesterol/Desmosterol (6), Cholesterol (4), Estradiol (4)</td><td>Nuclear receptor-mediated transcriptional regulation via steroids, retinoids, and cholesterol derivatives |
+<tr><td>Synaptic adhesion</td><td>71</td><td>Neuroligin (16), LRRTM (13), LRFN (10), Calsyntenin (9), SLITRK (9), Neurexin (8), CADM (6)</td><td>Trans-synaptic adhesion complexes specifying and maintaining excitatory/inhibitory synapses |
+<tr><td>Metabolic/Other</td><td>65</td><td>Apolipoprotein (9), Transferrin (8), Amyloid-β precursor (7), Plasminogen activator (6), Prothrombin (9), Fibrinogen (3), Amyloid-like (3), Annexin (3), Growth arrest (3), Syndecan (3), von Willebrand factor (3), Phospholipase (2), Cathepsin (2), Humanin (2), Prosaposin (2)</td><td>Diverse metabolic, proteolytic, and stress-response intercellular signals |
+<tr><td>Hormones/Endocrine</td><td>61</td><td>Choriogonadotropin (11), Relaxin (10), PTH (7), Endothelin (6), GH-releasing hormone (4), GnRH (4), Angiopoietin (3), Angiotensin (3), Insulin-like precursor (3), Kininogen (3), Leptin (3), Prolactin (2), T3 (2)</td><td>Peptide and protein hormone signaling; neuroendocrine and systemic homeostatic regulation |
+<tr><td>Lipid signaling</td><td>60</td><td>Lipoxin/Leukotriene (26), Prostaglandin (22), Arachidonoylglycerol (6), LPA receptor (3), Thromboxane (3)</td><td>Eicosanoid and lysophospholipid signaling; inflammation, pain, and neuromodulation via GPCRs |
+<tr><td>Notch/Hedgehog</td><td>46</td><td>Notch (31), Sonic hedgehog (7), Desert hedgehog (4), Indian hedgehog (4)</td><td>Cell fate determination, glial differentiation, adult neural stem cell maintenance |
+<tr><td>Cholinergic signaling</td><td>43</td><td>Choline acetyltransferase/CHAT complexes (43)</td><td>CNS and neuromuscular cholinergic transmission; attention, memory, autonomic function |
+<tr><td>Purinergic signaling</td><td>20</td><td>Adenosine/NT5E complexes (16), Ectonucleoside (4)</td><td>Adenosine production and transport; synaptic depression and neuroinflammation modulation |
+<tr><td>Teneurin/Latrophilin</td><td>19</td><td>Teneurin/FLRT complexes (19)</td><td>Trans-synaptic partner matching during circuit assembly; synapse specificity |
+<tr><td>Gap junction</td><td>10</td><td>Connexin gap junctions (10)</td><td>Direct intercellular electrical and metabolic coupling via hemichannel complexes |
+<tr><td>Glycine signaling</td><td>8</td><td>Glycine biosynthetic/transport complexes (8)</td><td>Inhibitory neurotransmission in brainstem/spinal cord; glycine biosynthesis and reuptake |
+<tr><td>Synapse organization</td><td>7</td><td>Thrombospondin (5), Agrin (2)</td><td>ECM-derived inductive signals triggering synapse formation and maturation |
+
+<h2>Key Parameters</h2>
+
+<li><strong>CCC</strong>: <code>expr_prop=0.05</code>, FDR correction on <code>cellphone_pvals</code>, min 1 animal per interaction</li>
+<li><strong>Regression</strong>: <code>min_animals=10</code>, <code>min_age=1.0</code> (excludes infants)</li>
+<li><strong>Enrichment</strong>: <code>age_qval < 0.05</code> (regression significance threshold), hypergeometric test with global BH-FDR correction</li>
+
+<h2>Environment</h2>
+<pre><code>conda activate cellchat_env    # CCC pipeline (Python)
+<pre><code>
+</div>
+    </section>
+    <hr>
     <section id="data">
         <h2>Data Files</h2>
         <h3>Downloads</h3>
@@ -97,9 +275,9 @@
         <h3>HPC Paths (too large for download)</h3>
         
         <div class="hpcfile">
-            <span class="hpclabel">Per-region regression results</span>
-            <code>/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results/regression_{REGION}/whole_{region}_age_sex_regression.csv</code>
-            <span class="desc">OLS regression (lr_means ~ age + sex) per interaction. ~1.5–5M rows per region. Columns: interaction, n_animals, mean_lr_means, age_coef, age_qval, sex_coef, sex_qval, r_squared</span>
+            <span class="hpclabel">Per-animal LIANA outputs</span>
+            <code>/scratch/easmit31/cell_cell/results/per_animal_louvain_corrected/{ANIMAL}_{REGION}_louvain_results.csv</code>
+            <span class="desc">Raw LIANA CCC results per animal per region. 582 files total.</span>
         </div>
         <div class="hpcfile">
             <span class="hpclabel">LR means matrices</span>
@@ -112,9 +290,9 @@
             <span class="desc">Age-significant LR pairs per functional category with sender/receiver and age coefficients</span>
         </div>
         <div class="hpcfile">
-            <span class="hpclabel">Per-animal LIANA outputs</span>
-            <code>/scratch/easmit31/cell_cell/results/per_animal_louvain_corrected/{ANIMAL}_{REGION}_louvain_results.csv</code>
-            <span class="desc">Raw LIANA CCC results per animal per region. 582 files total.</span>
+            <span class="hpclabel">Per-region regression results</span>
+            <code>/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results/regression_{REGION}/whole_{region}_age_sex_regression.csv</code>
+            <span class="desc">OLS regression (lr_means ~ age + sex) per interaction. ~1.5–5M rows per region. Columns: interaction, n_animals, mean_lr_means, age_coef, age_qval, sex_coef, sex_qval, r_squared</span>
         </div>
     </section>
     <hr>
