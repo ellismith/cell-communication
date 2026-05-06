@@ -31,7 +31,7 @@ clip_tag  = "_clipped"     if args.clip         else ""
 sig_tag   = "_sigonly"     if args.sig_only      else ""
 col_tag   = "_splitcolors" if args.split_colors  else ""
 
-IN_PATH = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/hypergeometric_all_regions/hypergeometric_enrichment_all_regions.csv"
+IN_PATH = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/hypergeometric_celltype/hypergeometric_enrichment_all_regions.csv"
 OUT_DIR = os.path.dirname(IN_PATH)
 print(OUT_DIR)
 
@@ -45,7 +45,7 @@ CELLTYPE_LABELS = {
     "Astrocyte":     "AST",
     "Microglia":     "MGL",
     "Oligo":         "OLIG",
-    "OPC":           "OLIG",
+    "OPC":           "OPC",
     "Ependymal":     "EPEN",
     "Vascular":      "VASC",
     "Glut":          "EXC",
@@ -90,8 +90,12 @@ def make_heatmap(df, direction, role, log_fn, log_label, out_dir, log_name,
         )
         fe_pivot = fe_pivot.where(sig_mask, other=np.nan)
 
-    fe_plot = fe_pivot.clip(lower=1) if clip else fe_pivot.clip(lower=1e-6)
+    # only show enrichment (fe>=1); mask depletion as NaN before logging
+    fe_plot = fe_pivot.where(fe_pivot >= 1)
+    if not clip:
+        fe_plot = fe_plot  # keep NaN for depleted
     log_fe  = log_fn(fe_plot.clip(lower=1e-6))
+    log_fe  = log_fe.where(fe_pivot >= 1)  # re-mask after log
 
     finite_vals = log_fe.values[np.isfinite(log_fe.values)]
 
@@ -130,15 +134,15 @@ def make_heatmap(df, direction, role, log_fn, log_label, out_dir, log_name,
 
     ax.set_xticks(range(n_reg))
     ax.set_xticklabels([REGION_LABELS.get(r, r) for r in regions],
-                       rotation=45, ha="right", fontsize=12)
+                       rotation=45, ha="right", fontsize=16)
     ax.set_yticks(range(n_ct))
-    ax.set_yticklabels([CELLTYPE_LABELS.get(ct, ct) for ct in cell_types], fontsize=12)
-    ax.set_xlabel("Region", fontsize=14)
-    ax.set_ylabel("Cell type", fontsize=14)
-    # ax.set_title(f"{direction.capitalize()} — {role}\n{log_label}", fontsize=14)
+    ax.set_yticklabels([CELLTYPE_LABELS.get(ct, ct) for ct in cell_types], fontsize=16)
+    ax.set_xlabel("Region", fontsize=18)
+    ax.set_ylabel("Cell type", fontsize=18)
+    # ax.set_title(f"{direction.capitalize()} — {role}\n{log_label}", fontsize=16)
 
     cbar = fig.colorbar(im, ax=ax, shrink=0.6, pad=0.02)
-    cbar.set_label(log_label, fontsize=12)
+    cbar.set_label(log_label, fontsize=16)
     cbar.ax.tick_params(labelsize=11)
 
     plt.tight_layout()
