@@ -1,185 +1,157 @@
 #!/usr/bin/env python3
 """
-For each significant category × region (from master_summary_table.csv),
-plot a heatmap of age_coef at Louvain level.
-Columns filtered to only Louvain combos where sender OR receiver
-is in the hypergeometric-significant Louvain set.
-Capped at 300 combos (most populated).
-Both rows and columns clustered by correlation.
+plot_louvain_heatmaps.py
+========================
+Louvain-level heatmaps of age effect (OLS β) for 5 focal LR pairs.
+Rows = individual sender_louvain→receiver_louvain combos,
+       top N by n_sig louvains at q_thresh.
+Cols = regions.
+Color = raw age_coef (all cells with data shown).
+Asterisk = significant at q_thresh.
 
-  rows = LR pairs (age-sig in either direction)
-  cols = Louvain sender → Louvain receiver (filtered)
-  color = age_coef (red=strengthening, blue=weakening)
+Usage
+-----
+python3 plot_louvain_heatmaps.py
+python3 plot_louvain_heatmaps.py --top_n 20 --q_thresh 0.05
+python3 plot_louvain_heatmaps.py --align_cbar   # shared cbar: immune pairs share one, nlgn pairs share one
 """
+import pandas as pd, numpy as np, glob, os, argparse, re, matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt, seaborn as sns
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import os
-import glob
+parser = argparse.ArgumentParser()
+parser.add_argument("--top_n",      type=int,   default=15)
+parser.add_argument("--q_thresh",   type=float, default=0.05)
+parser.add_argument("--align_cbar", action="store_true",
+                    help="share colorbar: immune pairs share scale, nlgn pairs share scale")
+args = parser.parse_args()
 
-# ── paths ──────────────────────────────────────────────────────────────────
-BASE_DIR      = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected"
-SUMMARY_FILE  = os.path.join(BASE_DIR, "hypergeometric_all_regions", "master_summary_table.csv")
-OVERLAP_FILE  = os.path.join(BASE_DIR, "hypergeometric_all_regions", "louvain_overlap_check.csv")
-CATEGORY_DIR  = os.path.join(BASE_DIR, "hypergeometric_all_regions", "category_tables")
-OUT_DIR       = os.path.join(BASE_DIR, "hypergeometric_all_regions", "louvain_heatmaps")
-os.makedirs(OUT_DIR, exist_ok=True)
+DIR = "/scratch/easmit31/cell_cell/results/within_region_analysis_corrected/regression_results"
+OUT = "/scratch/easmit31/cell_cell/results/manuscript_relevant_plots"
 
-MAX_FIG_W  = 40
-MAX_FIG_H  = 40
-MAX_COMBOS = 300
-
-REGION_LABELS_INV = {
-    "ACC": "acc", "CN": "cn", "dlPFC": "dlpfc", "EC": "ec", "HIP": "hip",
-    "IPP": "ipp", "lCB": "lcb", "M1": "m1", "MB": "mb", "mdTN": "mdtn", "NAc": "nac",
+PAIRS        = ["NLGN1|NRXN1","NLGN1|NRXN2","NLGN1|NRXN3","CX3CL1|CX3CR1","IL34|CSF1R"]
+IMMUNE_PAIRS = {"CX3CL1|CX3CR1","IL34|CSF1R"}
+NLGN_PAIRS   = {"NLGN1|NRXN1","NLGN1|NRXN2","NLGN1|NRXN3"}
+REGIONS      = ["ACC","CN","DLPFC","EC","HIP","IPP","LCB","M1","MB","MDTN","NAC"]
+REGION_LABELS = {
+    "ACC":"ACC","CN":"CN","DLPFC":"dlPFC","EC":"EC","HIP":"HIP",
+    "IPP":"IPP","LCB":"lCb","M1":"M1","MB":"MB","MDTN":"mdTN","NAC":"NAc"
 }
+ABBREV = {
+    "Astrocyte":    "AST", "Microglia":    "MGL", "Oligo":        "OLIG",
+    "OPC":          "OPC", "Ependymal":    "EPEN", "Vascular":     "VASC",
+    "Glutamatergic":"EXC", "GABA":         "INH", "MSN":          "MSN",
+    "Cerebellar":   "CER", "Midbrain":     "MBN", "Basket":       "BC",
+}
+CELL_WIDTH  = 2.2
+CELL_HEIGHT = 1.05
 
-def reorder_by_correlation(pivot, axis=1):
-    """Reorder rows (axis=0) or columns (axis=1) by greedy nearest-neighbor correlation."""
-    if axis == 1:
-        data = pivot.fillna(0)
-    else:
-        data = pivot.fillna(0).T
-    if data.shape[1] <= 2:
-        return pivot
-    corr = data.corr()
-    remaining = list(corr.columns)
-    ordered = [remaining.pop(0)]
-    while remaining:
-        last = ordered[-1]
-        sims = corr[last][remaining]
-        next_col = sims.idxmax()
-        ordered.append(next_col)
-        remaining.remove(next_col)
-    if axis == 1:
-        return pivot[ordered]
-    else:
-        return pivot.loc[ordered]
+def abbrev_louvain(s):
+    for k, v in ABBREV.items():
+        if s.startswith(k):
+            rest = s[len(k):].lstrip('_')
+            return f"{v}_{rest}" if rest else v
+    return s
 
-# ── load ───────────────────────────────────────────────────────────────────
-summary = pd.read_csv(SUMMARY_FILE)
-overlap = pd.read_csv(OVERLAP_FILE)
+def nat_key(s):
+    return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', s)]
 
-sig_louvains = {}
-for _, row in overlap.iterrows():
-    key  = (row["region"], row["cell_type"], row["role"], row["direction"])
-    lous = set(row["overlap"].split(", ")) \
-           if pd.notna(row["overlap"]) and row["overlap"] else set()
-    sig_louvains[key] = lous
-
-cat_files = sorted(glob.glob(os.path.join(CATEGORY_DIR, "category_*.csv")))
-cat_dfs = {}
-for f in cat_files:
-    cat_name = os.path.basename(f).replace("category_", "").replace(".csv", "").replace("_", " ")
+# ── load ──────────────────────────────────────────────────────────────────────
+rows = []
+for f in glob.glob(f"{DIR}/regression_*/whole_*_age_sex_regression.csv"):
+    region = os.path.basename(f).replace("whole_","").split("_age_sex")[0].upper()
     df = pd.read_csv(f)
-    cat_dfs[cat_name] = df
+    p = df["interaction"].str.split("|",expand=True)
+    df["sender_louvain"]   = p[0]
+    df["receiver_louvain"] = p[1]
+    df["lr_pair"] = p[2]+"|"+p[3]
+    df["region"]  = region
+    rows.append(df)
+d = pd.concat(rows)
+d = d[d["lr_pair"].isin(PAIRS)].copy()
+d["louvain_pair"] = d["sender_louvain"].apply(abbrev_louvain)+"→"+d["receiver_louvain"].apply(abbrev_louvain)
 
-sig_combos = summary[["region", "category"]].drop_duplicates()
-print(f"Plotting {len(sig_combos)} category × region combos")
+# ── compute group vmaxes if align_cbar ───────────────────────────────────────
+immune_vmax = None
+nlgn_vmax   = None
+if args.align_cbar:
+    for group, pairs in [("immune", IMMUNE_PAIRS), ("nlgn", NLGN_PAIRS)]:
+        vals = []
+        for pair in pairs:
+            sub = d[d["lr_pair"]==pair]
+            sig = sub[sub["age_qval"] < args.q_thresh]
+            if sig.empty: continue
+            top_pairs = sig.groupby("louvain_pair")["age_qval"].count().nlargest(args.top_n).index.tolist()
+            sub_top = sub[sub["louvain_pair"].isin(top_pairs)]
+            piv = sub_top.pivot_table(index="louvain_pair", columns="region",
+                                      values="age_coef", aggfunc="mean").reindex(columns=REGIONS)
+            vals.append(piv.values.flatten())
+        if vals:
+            vmax = np.nanmax(np.abs(np.concatenate(vals)))
+            if group == "immune": immune_vmax = vmax
+            else: nlgn_vmax = vmax
+    print(f"Immune vmax: {immune_vmax:.4f}, NLGN vmax: {nlgn_vmax:.4f}")
 
-# ── main loop ──────────────────────────────────────────────────────────────
-for _, crow in sig_combos.iterrows():
-    region_label  = crow["region"]
-    category      = crow["category"]
-    region_key    = REGION_LABELS_INV.get(region_label, region_label.lower())
+# ── plot ──────────────────────────────────────────────────────────────────────
+for pair in PAIRS:
+    sub = d[d["lr_pair"]==pair].copy()
+    sig = sub[sub["age_qval"] < args.q_thresh]
+    if sig.empty:
+        print(f"No sig interactions for {pair}"); continue
 
-    if category not in cat_dfs:
-        continue
+    if pair in IMMUNE_PAIRS:
+        top_pairs = sorted(sig["louvain_pair"].unique().tolist(), key=nat_key)
+    else:
+        top_pairs = (sig.groupby("louvain_pair")["age_qval"]
+                     .count().nlargest(args.top_n).index.tolist())
+        top_pairs = sorted(top_pairs, key=nat_key)
 
-    cat_df        = cat_dfs[category]
-    cat_df_region = cat_df[cat_df["region"] == region_key].copy()
+    sub_top  = sub[sub["louvain_pair"].isin(top_pairs)].copy()
+    piv      = sub_top.pivot_table(index="louvain_pair", columns="region",
+                                   values="age_coef", aggfunc="mean").reindex(columns=REGIONS)
+    sig_mask = sub_top.pivot_table(index="louvain_pair", columns="region",
+                                   values="age_qval",
+                                   aggfunc=lambda x: (x < args.q_thresh).any()).reindex(columns=REGIONS)
+    piv      = piv.reindex(top_pairs)
+    sig_mask = sig_mask.reindex(top_pairs)
 
-    if len(cat_df_region) == 0:
-        continue
+    col_labs = [REGION_LABELS.get(c, c) for c in REGIONS]
+    piv.columns      = col_labs
+    sig_mask.columns = col_labs
 
-    cat_sig    = summary[(summary["region"] == region_label) &
-                         (summary["category"] == category)]
-    directions = cat_sig["direction"].unique()
+    if args.align_cbar:
+        vmax = immune_vmax if pair in IMMUNE_PAIRS else nlgn_vmax
+    else:
+        vmax = np.nanmax(np.abs(piv.values))
 
-    sig_senders   = set()
-    sig_receivers = set()
-    for direction in directions:
-        for broad_ct in cat_df_region["sender"].str.replace(r"_\d+$","",regex=True).unique():
-            k = (region_key, broad_ct, "sender", direction)
-            sig_senders |= sig_louvains.get(k, set())
-        for broad_ct in cat_df_region["receiver"].str.replace(r"_\d+$","",regex=True).unique():
-            k = (region_key, broad_ct, "receiver", direction)
-            sig_receivers |= sig_louvains.get(k, set())
+    n_rows = len(top_pairs)
+    n_cols = len(REGIONS)
+    fig, ax = plt.subplots(figsize=(n_cols*CELL_WIDTH+5, n_rows*CELL_HEIGHT+3))
 
-    mask = (
-        cat_df_region["sender"].isin(sig_senders) |
-        cat_df_region["receiver"].isin(sig_receivers)
-    )
-    sub = cat_df_region[mask].copy()
+    sns.heatmap(piv, ax=ax, cmap="RdBu_r", center=0, vmin=-vmax, vmax=vmax,
+                linewidths=0.3, linecolor="gray", cbar_kws={"label":"Age effect (β)"})
 
-    if len(sub) == 0:
-        print(f"  Skipping {category} — {region_label}: no sig Louvain combos after filter")
-        continue
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=34)
+    cbar.set_label("Age effect (β)", fontsize=44)
 
-    sub["combo"] = sub["sender"] + " → " + sub["receiver"]
+    for i, row in enumerate(piv.index):
+        for j, col in enumerate(col_labs):
+            if sig_mask.loc[row, col] == True:
+                ax.text(j+0.5, i+0.5, "*", ha="center", va="center",
+                        fontsize=30, color="white", fontweight="bold")
 
-    if sub["combo"].nunique() > MAX_COMBOS:
-        top_combos = (sub.groupby("combo").size()
-                      .sort_values(ascending=False)
-                      .head(MAX_COMBOS).index)
-        sub = sub[sub["combo"].isin(top_combos)]
-        print(f"  Capped to top {MAX_COMBOS} combos for {category} — {region_label}")
-
-    pivot = sub.pivot_table(
-        index="lr_pair", columns="combo",
-        values="age_coef", aggfunc="mean"
-    )
-
-    # cluster both rows and columns by correlation
-    if pivot.shape[1] > 2:
-        pivot = reorder_by_correlation(pivot, axis=1)  # columns
-    if pivot.shape[0] > 2:
-        pivot = reorder_by_correlation(pivot, axis=0)  # rows
-
-    n_lr    = len(pivot)
-    n_combo = len(pivot.columns)
-
-    if n_lr == 0 or n_combo == 0:
-        continue
-
-    fig_w    = min(MAX_FIG_W, max(6, n_combo * 0.25))
-    fig_h    = min(MAX_FIG_H, max(4, n_lr    * 0.3))
-    fontsize = max(4, min(7, int(7 * 20 / max(n_lr, n_combo, 20))))
-
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
-
-    finite_vals = pivot.values[np.isfinite(pivot.values)]
-    vmax = np.nanpercentile(np.abs(finite_vals), 95) if len(finite_vals) else 0.001
-    vmax = max(vmax, 0.001)
-    norm = mcolors.TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
-    cmap = plt.cm.RdBu_r.with_extremes(bad="lightgrey")
-
-    im = ax.imshow(pivot.values, aspect="auto", cmap=cmap, norm=norm)
-
-    ax.set_xticks(range(n_combo))
-    ax.set_xticklabels(pivot.columns, rotation=90, fontsize=fontsize)
-    ax.set_yticks(range(n_lr))
-    ax.set_yticklabels(pivot.index, fontsize=fontsize)
-    ax.set_xlabel("Louvain Sender → Receiver", fontsize=10)
-    ax.set_ylabel("LR pair", fontsize=10)
-    ax.set_title(
-        f"{category} — {region_label}\n"
-        f"({n_lr} LR pairs × {n_combo} Louvain combos, "
-        f"red=strengthening, blue=weakening)",
-        fontsize=10
-    )
-
-    cbar = fig.colorbar(im, ax=ax, shrink=0.4, pad=0.01)
-    cbar.set_label("age_coef", fontsize=8)
+    ax.set_title(pair, fontsize=40, fontweight="bold", pad=16)
+    ax.set_xlabel("Region", fontsize=44)
+    ax.set_ylabel("Sender→Receiver (Louvain)", fontsize=44)
+    ax.tick_params(axis="x", labelsize=34, rotation=45)
+    ax.tick_params(axis="y", labelsize=30, rotation=0)
+    for tick in ax.get_yticklabels():
+        tick.set_rotation(0)
 
     plt.tight_layout()
-
-    fname = f"louvain_{category.replace(' ', '_')}_{region_label}.png"
-    fpath = os.path.join(OUT_DIR, fname)
-    fig.savefig(fpath, dpi=150, bbox_inches="tight")
+    suffix = "_aligncbar" if args.align_cbar else ""
+    fname = os.path.join(OUT, f"heatmap_louvain_{pair.replace('|','_')}_q{args.q_thresh}{suffix}.png")
+    plt.savefig(fname, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"Saved: {fname}  ({n_lr} × {n_combo})")
-
-print("Done.")
+    print(f"Saved: {fname}")
